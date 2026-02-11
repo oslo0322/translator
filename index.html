@@ -100,24 +100,43 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;o
 .lang-toggle button:last-child{border-radius:0 var(--radius) var(--radius) 0}
 .lang-toggle button.active{background:var(--accent);color:#0f172a;border-color:var(--accent)}
 
-/* Mic button */
-.mic-area{padding:16px;display:flex;justify-content:center;flex-shrink:0}
-.mic-btn{
-  width:100%;max-width:400px;height:72px;border:none;border-radius:var(--radius);
-  background:linear-gradient(135deg,var(--accent),var(--accent2));
-  color:#fff;font-size:20px;font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:10px;
+/* Photo results */
+.photo-results{
+  background:var(--surface);border-radius:var(--radius);overflow:hidden;flex-shrink:0;
+}
+.photo-results-header{
+  padding:14px 20px;font-size:14px;font-weight:600;color:var(--accent);
+  border-bottom:1px solid var(--surface2);
+}
+.photo-line{
+  padding:14px 20px;cursor:pointer;transition:background .15s;
+  border-bottom:1px solid var(--surface2);
+}
+.photo-line:last-child{border-bottom:none}
+.photo-line:active{background:var(--surface2)}
+.photo-line .pl-original{font-size:13px;color:var(--text2);line-height:1.4}
+.photo-line .pl-translation{font-size:20px;font-weight:600;line-height:1.4;margin-top:4px}
+.photo-line .pl-romaji{font-size:13px;color:var(--accent);margin-top:2px}
+
+/* Action buttons area */
+.action-area{padding:12px 16px 16px;display:flex;justify-content:center;gap:12px;flex-shrink:0}
+.action-btn{
+  flex:1;max-width:200px;height:64px;border:none;border-radius:var(--radius);
+  color:#fff;font-size:17px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
   transition:transform .1s,box-shadow .2s;user-select:none;
   -webkit-user-select:none;touch-action:manipulation;
 }
-.mic-btn:active{transform:scale(.97)}
+.action-btn:active{transform:scale(.97)}
+.mic-btn{background:linear-gradient(135deg,var(--accent),var(--accent2))}
 .mic-btn.recording{
   background:linear-gradient(135deg,var(--danger),#ef4444);
   animation:pulse 1s ease-in-out infinite;
 }
+.cam-btn{background:linear-gradient(135deg,var(--accent2),#a78bfa)}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.5)}50%{box-shadow:0 0 0 16px rgba(248,113,113,0)}}
 
-.mic-btn svg{width:28px;height:28px;fill:currentColor}
+.action-btn svg{width:26px;height:26px;fill:currentColor}
 
 /* History */
 .history-title{font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:1px;margin-top:8px}
@@ -186,10 +205,16 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;o
   <button data-lang="ja">日本語</button>
 </div>
 
-<div class="mic-area">
-  <button class="mic-btn" id="micBtn">
+<input type="file" id="camInput" accept="image/*" capture="environment" style="display:none">
+
+<div class="action-area">
+  <button class="action-btn mic-btn" id="micBtn">
     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-    <span>點擊說話</span>
+    <span>說話</span>
+  </button>
+  <button class="action-btn cam-btn" id="camBtn">
+    <svg viewBox="0 0 24 24"><path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4z"/><path d="M9 2 7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
+    <span>拍照</span>
   </button>
 </div>
 
@@ -209,6 +234,18 @@ const SYSTEM_PROMPT = `你是一位專業的中日翻譯專家。根據使用者
 回傳格式：
 {"translation":"翻譯結果","romaji":"羅馬拼音（僅中文翻日文時填寫）","detected_lang":"zh或ja"}`;
 
+const PHOTO_PROMPT = `你是一位專業的中日翻譯專家。請辨識圖片中所有可見的文字，並逐段翻譯。
+- 日文文字翻譯成繁體中文
+- 中文文字翻譯成日文，並附上羅馬拼音
+- 將每一段有意義的文字分開回傳
+- 忽略無意義的符號或裝飾文字
+
+你只能回傳純 JSON，不要加 markdown 標記、不要加任何說明文字。
+回傳格式：
+{"lines":[{"original":"原文","translation":"翻譯結果","romaji":"羅馬拼音（僅中翻日時填寫，否則留空字串）","detected_lang":"zh或ja"}]}
+如果圖片中沒有可辨識的文字，回傳：
+{"lines":[]}`;
+
 // -- Elements --
 const micBtn = document.getElementById('micBtn');
 const textInput = document.getElementById('textInput');
@@ -223,6 +260,8 @@ const keyInput = document.getElementById('keyInput');
 const keySaveBtn = document.getElementById('keySaveBtn');
 const keyCancelBtn = document.getElementById('keyCancelBtn');
 const settingsBtn = document.getElementById('settingsBtn');
+const camBtn = document.getElementById('camBtn');
+const camInput = document.getElementById('camInput');
 
 let history = JSON.parse(localStorage.getItem('translateHistory') || '[]');
 let isRecording = false;
@@ -443,6 +482,108 @@ function showResult(originalText, result) {
   resultCard.onclick = () => {
     speak(translation, detected_lang === 'zh' ? 'ja-JP' : 'zh-TW');
   };
+}
+
+// -- Camera --
+camBtn.addEventListener('click', () => {
+  if (!getApiKey()) { showKeyModal(false); return; }
+  camInput.value = '';
+  camInput.click();
+});
+
+camInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  await translatePhoto(file);
+});
+
+async function translatePhoto(file) {
+  loading.classList.add('show');
+  resultCard.className = 'result-card empty';
+  resultCard.innerHTML = '<span>辨識翻譯中...</span>';
+  setStatus('');
+
+  try {
+    const base64 = await fileToBase64(file);
+    const mimeType = file.type || 'image/jpeg';
+
+    const body = {
+      contents: [{
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType, data: base64 } },
+          { text: PHOTO_PROMPT }
+        ]
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+    };
+
+    const resp = await fetch(getGeminiUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`API 錯誤 (${resp.status}): ${err.substring(0, 200)}`);
+    }
+
+    const data = await resp.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const jsonStr = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const result = JSON.parse(jsonStr);
+
+    if (!result.lines || result.lines.length === 0) {
+      resultCard.className = 'result-card empty';
+      resultCard.innerHTML = '<span>未偵測到文字</span>';
+    } else {
+      showPhotoResults(result.lines);
+    }
+
+  } catch (e) {
+    resultCard.className = 'result-card empty';
+    resultCard.innerHTML = `<span style="color:var(--danger)">辨識失敗<br><small>${e.message}</small></span>`;
+  }
+
+  loading.classList.remove('show');
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function showPhotoResults(lines) {
+  resultCard.className = '';
+  resultCard.onclick = null;
+
+  let html = `<div class="photo-results">`;
+  html += `<div class="photo-results-header">辨識到 ${lines.length} 段文字</div>`;
+
+  lines.forEach((line, i) => {
+    html += `<div class="photo-line" data-pidx="${i}">`;
+    html += `<div class="pl-original">${esc(line.original)}</div>`;
+    html += `<div class="pl-translation">${esc(line.translation)}</div>`;
+    if (line.romaji) html += `<div class="pl-romaji">${esc(line.romaji)}</div>`;
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  resultCard.innerHTML = html;
+
+  resultCard.querySelectorAll('.photo-line').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.pidx);
+      const line = lines[idx];
+      if (!line) return;
+      speak(line.translation, line.detected_lang === 'zh' ? 'ja-JP' : 'zh-TW');
+    });
+  });
 }
 
 // -- TTS --
