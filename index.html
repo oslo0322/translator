@@ -171,7 +171,7 @@ body{background:var(--bg);color:var(--text);display:flex;flex-direction:column;o
 <div class="mic-area">
   <button class="mic-btn" id="micBtn">
     <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
-    <span>按住說話</span>
+    <span>點擊說話</span>
   </button>
 </div>
 
@@ -259,14 +259,17 @@ function initRecognition() {
   if (!SR) { setStatus('此瀏覽器不支援語音辨識'); return null; }
   const r = new SR();
   r.continuous = false;
-  r.interimResults = false;
+  r.interimResults = true;
   r.maxAlternatives = 1;
   r.lang = 'zh-TW';
   return r;
 }
 
-async function startRecording() {
-  if (isRecording) return;
+async function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+    return;
+  }
   if (!getApiKey()) { showKeyModal(false); return; }
 
   const hasPermission = await ensureMicPermission();
@@ -277,14 +280,24 @@ async function startRecording() {
 
   isRecording = true;
   micBtn.classList.add('recording');
-  micBtn.querySelector('span').textContent = '正在聆聽...';
+  micBtn.querySelector('span').textContent = '聆聽中...點擊停止';
   setStatus('請說話...');
 
   recognition.onresult = (e) => {
-    const text = e.results[0][0].transcript.trim();
-    if (text) {
-      textInput.value = text;
-      translate(text);
+    let interim = '';
+    let final = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) {
+        final += e.results[i][0].transcript;
+      } else {
+        interim += e.results[i][0].transcript;
+      }
+    }
+    // Show interim results in real time
+    textInput.value = final || interim;
+    if (final) {
+      stopRecording();
+      translate(final.trim());
     }
   };
   recognition.onerror = (e) => {
@@ -295,7 +308,16 @@ async function startRecording() {
     }
     stopRecording();
   };
-  recognition.onend = () => { stopRecording(); };
+  recognition.onend = () => {
+    // If we got no final result, try to use whatever we have
+    const text = textInput.value.trim();
+    if (isRecording && text) {
+      stopRecording();
+      translate(text);
+    } else {
+      stopRecording();
+    }
+  };
 
   try { recognition.start(); } catch(e) { stopRecording(); }
 }
@@ -303,31 +325,15 @@ async function startRecording() {
 function stopRecording() {
   isRecording = false;
   micBtn.classList.remove('recording');
-  micBtn.querySelector('span').textContent = '按住說話';
+  micBtn.querySelector('span').textContent = '點擊說話';
   if (recognition) { try { recognition.stop(); } catch(e){} }
 }
 
-// -- Mic button events (hold to talk) --
-let holdTimer = null;
-function onMicDown(e) {
+// -- Mic button event (tap to toggle) --
+micBtn.addEventListener('click', (e) => {
   e.preventDefault();
-  holdTimer = setTimeout(() => { holdTimer = null; }, 0);
-  startRecording();
-}
-function onMicUp(e) {
-  e.preventDefault();
-  if (holdTimer !== null) { clearTimeout(holdTimer); holdTimer = null; }
-  if (isRecording && recognition) {
-    try { recognition.stop(); } catch(e){}
-  }
-}
-
-micBtn.addEventListener('mousedown', onMicDown);
-micBtn.addEventListener('mouseup', onMicUp);
-micBtn.addEventListener('mouseleave', onMicUp);
-micBtn.addEventListener('touchstart', onMicDown, {passive:false});
-micBtn.addEventListener('touchend', onMicUp, {passive:false});
-micBtn.addEventListener('touchcancel', onMicUp, {passive:false});
+  toggleRecording();
+});
 
 // -- Text input --
 sendBtn.addEventListener('click', () => {
