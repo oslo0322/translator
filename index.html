@@ -237,6 +237,22 @@ settingsBtn.addEventListener('click', () => { showKeyModal(true); });
 // First launch: show modal if no key
 if (!getApiKey()) { showKeyModal(false); }
 
+// -- Microphone Permission --
+let micPermissionGranted = false;
+
+async function ensureMicPermission() {
+  if (micPermissionGranted) return true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+    micPermissionGranted = true;
+    return true;
+  } catch (e) {
+    setStatus('請允許麥克風權限');
+    return false;
+  }
+}
+
 // -- Speech Recognition Setup --
 function initRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -249,9 +265,13 @@ function initRecognition() {
   return r;
 }
 
-function startRecording() {
+async function startRecording() {
   if (isRecording) return;
   if (!getApiKey()) { showKeyModal(false); return; }
+
+  const hasPermission = await ensureMicPermission();
+  if (!hasPermission) return;
+
   recognition = initRecognition();
   if (!recognition) return;
 
