@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Comparison</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0e1a; overflow: hidden; }
+canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+// ============================================================
+// COMBINED: New Architecture (top) vs Old Architecture (bottom)
+// Return path: Inference → Redis → FastAPI → SSE → Client
+// ============================================================
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+const COLORS = {
+  bg1: '#0a0e1a', bg2: '#0d1225', grid: '#1a1f3a',
+  client: '#00e5ff', fastapi: '#1de9b6', redisStream: '#ff5252',
+  redisCache: '#ff6e40', worker: '#448aff', supervisor: '#00e676',
+  inference: '#ff9100', sse: '#ff4081',
+  consumer1: '#7c4dff', consumer2: '#448aff', consumer3: '#00b0ff',
+  text: '#e0e0e0', textDim: '#8892a4', boxBg: '#0d1117',
+  divider: '#2a3050',
+};
+
+const CYCLE_DURATION = 18000;
+const TASK_COUNT = 24;
+const SEMAPHORE_LIMIT = 8;
+
+let W, H, dpr;
+let animStartTime = null;
+let lastTimestamp = 0;
+
+// ============================================================
+// UTILITY
+// ============================================================
+function setupCanvas() {
+  dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+function quadBezier(p0, p1, p2, t) {
+  const mt = 1 - t;
+  return { x: mt*mt*p0.x + 2*mt*t*p1.x + t*t*p2.x, y: mt*mt*p0.y + 2*mt*t*p1.y + t*t*p2.y };
+}
+function hexToRGBA(hex, a) {
+  return `rgba(${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)},${clamp(a,0,1)})`;
+}
+function posOnLine(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) }; }
+function safeR(r) { return Math.max(0.1, r); }
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+function drawArrowhead(ctx, fx, fy, tx, ty, s) {
+  const a = Math.atan2(ty-fy,tx-fx);
+  ctx.beginPath(); ctx.moveTo(tx,ty);
+  ctx.lineTo(tx-s*Math.cos(a-Math.PI/6),ty-s*Math.sin(a-Math.PI/6));
+  ctx.lineTo(tx-s*Math.cos(a+Math.PI/6),ty-s*Math.sin(a+Math.PI/6));
+  ctx.closePath(); ctx.fill();
+}
+function drawGlowDot(x, y, r, color) {
+  r = safeR(r);
+  ctx.save();
+  ctx.shadowColor = color; ctx.shadowBlur = 20;
+  ctx.fillStyle = hexToRGBA(color, 0.3);
+  ctx.beginPath(); ctx.arc(x, y, r+4, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 12; ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 0.6;
+  ctx.beginPath(); ctx.arc(x, y, safeR(r*0.4), 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ============================================================
+// PANEL HELPER — maps fractional layout to a half of the screen
+// ============================================================
+function createPanel(yOffset, yScale) {
+  // yOffset: 0 for top, 0.5 for bottom. yScale: 0.5
+  return {
+    lx(f) { return f * W; },
+    ly(f) { return (f * yScale + yOffset) * H; },
+    boxCenter(l) { return { x: this.lx(l.x + l.w/2), y: this.ly(l.y + l.h/2) }; },
+    boxRight(l)  { return { x: this.lx(l.x + l.w), y: this.ly(l.y + l.h/2) }; },
+    boxLeft(l)   { return { x: this.lx(l.x), y: this.ly(l.y + l.h/2) }; },
+    boxTop(l)    { return { x: this.lx(l.x + l.w/2), y: this.ly(l.y) }; },
+    boxBottom(l) { return { x: this.lx(l.x + l.w/2), y: this.ly(l.y + l.h) }; },
+    drawBox(layout, label, color, sublabel) {
+      const x = this.lx(layout.x), y = this.ly(layout.y), w = this.lx(layout.w), h = this.ly(layout.h) - this.ly(0) + this.ly(layout.h) - this.ly(layout.h);
+      // Recompute h properly
+      const bh = layout.h * yScale * H;
+      const bw = layout.w * W;
+      ctx.save();
+      ctx.shadowColor = color; ctx.shadowBlur = 14;
+      ctx.fillStyle = COLORS.boxBg; ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+      roundRect(ctx, x, y, bw, bh, 6); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      const fs = Math.max(9, W * 0.009);
+      ctx.fillStyle = COLORS.text;
+      ctx.font = `bold ${fs}px "SF Mono","Fira Code","Courier New",monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + bw/2, y + bh/2 + (sublabel ? -6 : 0));
+      if (sublabel) {
+        ctx.fillStyle = COLORS.textDim;
+        ctx.font = `${Math.max(7, W * 0.007)}px "SF Mono","Courier New",monospace`;
+        ctx.fillText(sublabel, x + bw/2, y + bh/2 + 8);
+      }
+    },
+    drawConn(from, to, color, dashed, alpha) {
+      ctx.save(); ctx.globalAlpha = alpha || 0.35; ctx.strokeStyle = color; ctx.lineWidth = 1.2;
+      ctx.setLineDash(dashed ? [5,3] : []);
+      ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
+      ctx.fillStyle = color; ctx.globalAlpha = (alpha||0.35)+0.1;
+      drawArrowhead(ctx, from.x, from.y, to.x, to.y, 6);
+      ctx.restore();
+    },
+    drawCurve(from, to, co, color, dashed, alpha) {
+      const cp = { x: (from.x+to.x)/2 + (co.x||0), y: (from.y+to.y)/2 + (co.y||0) };
+      ctx.save(); ctx.globalAlpha = alpha || 0.35; ctx.strokeStyle = color; ctx.lineWidth = 1.2;
+      ctx.setLineDash(dashed ? [5,3] : []);
+      ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.quadraticCurveTo(cp.x,cp.y,to.x,to.y); ctx.stroke();
+      ctx.fillStyle = color;
+      const ne = quadBezier(from, cp, to, 0.95);
+      drawArrowhead(ctx, ne.x, ne.y, to.x, to.y, 6);
+      ctx.restore();
+    },
+    halfH() { return yScale * H; },
+    yOff() { return yOffset * H; },
+  };
+}
+
+// ============================================================
+// TOP PANEL: NEW ARCHITECTURE
+// ============================================================
+const topP = createPanel(0, 0.5);
+const NEW_LAYOUT = {
+  client:      { x: 0.03, y: 0.30, w: 0.09, h: 0.14 },
+  fastapi:     { x: 0.17, y: 0.30, w: 0.10, h: 0.14 },
+  redisStream: { x: 0.34, y: 0.14, w: 0.11, h: 0.14 },
+  redisCache:  { x: 0.34, y: 0.50, w: 0.11, h: 0.14 },
+  worker:      { x: 0.34, y: 0.78, w: 0.11, h: 0.14 },
+  supervisor:  { x: 0.54, y: 0.50, w: 0.10, h: 0.14 },
+  inference:   { x: 0.78, y: 0.50, w: 0.11, h: 0.14 },
+};
+const NEW_PHASES = {
+  clientToFastapi:    { start: 0.00, end: 0.06 },
+  fastapiToRedis:     { start: 0.06, end: 0.12 },
+  sseEstablish:       { start: 0.08, end: 0.14 },
+  redisToWorker:      { start: 0.12, end: 0.18 },
+  workerToSupervisor: { start: 0.16, end: 0.22 },
+  supervisorSpawn:    { start: 0.22, end: 0.26 },
+};
+
+let newPackets = [], newSpawnedTasks = [], newSseAlpha = 0, newSsePackets = [];
+let newTaskCounter = 0, newAllSpawned = false;
+
+// SpawnedTask for new architecture
+class NewTask {
+  constructor(id, angle) {
+    this.id = id; this.arcAngle = angle; this.progress = 0;
+    this.state = 'waitingAtSupervisor'; this.popScale = 0; this.trail = []; this.alive = true;
+    this.returnProgress = 0; this.returnState = 0; // 0: inf→redis, 1: redis→fastapi, 2: done(trigger sse)
+    this.sseTriggered = false;
+    this.flySpeed = 0.008 + Math.random() * 0.004;
+    this.inferenceDelay = 0.8 + Math.pow(Math.random(), 0.5) * 2.0;
+    this.inferenceTimer = 0; this.waitTimer = 0; this.waitSlot = 0;
+  }
+  getFlyPath() {
+    const from = topP.boxRight(NEW_LAYOUT.supervisor);
+    const to = topP.boxLeft(NEW_LAYOUT.inference);
+    const a = this.arcAngle * Math.PI / 180;
+    const spread = Math.min(topP.halfH() * 0.6, 140);
+    return { from, cp: { x: (from.x+to.x)/2, y: (from.y+to.y)/2 + Math.sin(a)*spread }, to };
+  }
+  getReturnPath() {
+    // Inference → Redis Stream (top arc)
+    const from = topP.boxTop(NEW_LAYOUT.inference);
+    const to = topP.boxRight(NEW_LAYOUT.redisStream);
+    return { from, cp: { x: (from.x+to.x)/2+20, y: (from.y+to.y)/2-40 }, to };
+  }
+  getRedisToFastapiPath() {
+    // Redis Stream → FastAPI (left, through top)
+    const from = topP.boxLeft(NEW_LAYOUT.redisStream);
+    const to = topP.boxTop(NEW_LAYOUT.fastapi);
+    return { from, cp: { x: (from.x+to.x)/2, y: (from.y+to.y)/2-20 }, to };
+  }
+  update(dt) {
+    if (this.state === 'waitingAtSupervisor') { this.waitTimer += dt; return; }
+    if (this.state === 'spawning') { this.popScale += 0.12; if (this.popScale >= 1) { this.popScale = 1; this.state = 'flying'; } return; }
+    if (this.state === 'flying') {
+      this.progress += this.flySpeed;
+      if (this.progress >= 1) { this.progress = 1; this.state = 'atInference'; this.trail = []; }
+      const p = this.getFlyPath(); const pos = quadBezier(p.from, p.cp, p.to, easeInOut(this.progress));
+      this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop(); return;
+    }
+    if (this.state === 'atInference') {
+      this.inferenceTimer += dt;
+      if (this.inferenceTimer >= this.inferenceDelay) { this.state = 'returnToRedis'; this.trail = []; this.returnProgress = 0; } return;
+    }
+    if (this.state === 'returnToRedis') {
+      this.returnProgress += 0.015;
+      const p = this.getReturnPath(); const pos = quadBezier(p.from, p.cp, p.to, easeInOut(Math.min(this.returnProgress, 1)));
+      this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop();
+      if (this.returnProgress >= 1) { this.state = 'returnToFastapi'; this.trail = []; this.returnProgress = 0; } return;
+    }
+    if (this.state === 'returnToFastapi') {
+      this.returnProgress += 0.018;
+      const p = this.getRedisToFastapiPath(); const pos = quadBezier(p.from, p.cp, p.to, easeInOut(Math.min(this.returnProgress, 1)));
+      this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop();
+      if (this.returnProgress >= 1) { this.state = 'done'; this.alive = false; } return;
+    }
+  }
+  draw() {
+    const P = topP; const color = COLORS.supervisor;
+    if (this.state === 'waitingAtSupervisor') {
+      const r = P.boxRight(NEW_LAYOUT.supervisor);
+      const qx = r.x + 10, qy = r.y - 30 + this.waitSlot * 7;
+      const bob = Math.sin(this.waitTimer * 5 + this.id * 0.7) * 1.5;
+      ctx.save(); ctx.shadowColor = '#ffeb3b'; ctx.shadowBlur = 6;
+      ctx.fillStyle = hexToRGBA('#ffeb3b', 0.8);
+      ctx.beginPath(); ctx.arc(qx + bob, qy, 2.5, 0, Math.PI*2); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.fillStyle = hexToRGBA('#ffeb3b', 0.5);
+      ctx.font = `${Math.max(6, W*0.005)}px monospace`; ctx.textAlign = 'left';
+      ctx.fillText(`T${this.id}`, qx + 6 + bob, qy + 2); ctx.restore(); return;
+    }
+    if (this.state === 'spawning') {
+      const p = this.getFlyPath().from; const s = clamp(easeOutCubic(this.popScale),0,1.2);
+      drawGlowDot(p.x, p.y, safeR(4*s), color); return;
+    }
+    if (this.state === 'flying') {
+      for (let i = this.trail.length-1; i >= 1; i--) {
+        ctx.fillStyle = hexToRGBA(color, (1-i/this.trail.length)*0.4);
+        ctx.beginPath(); ctx.arc(this.trail[i].x, this.trail[i].y, safeR(3*(1-i*0.1)), 0, Math.PI*2); ctx.fill();
+      }
+      if (this.trail.length > 0) {
+        drawGlowDot(this.trail[0].x, this.trail[0].y, 3, color);
+        ctx.save(); ctx.fillStyle = hexToRGBA('#fff', 0.4);
+        ctx.font = `${Math.max(6, W*0.005)}px monospace`; ctx.textAlign = 'center';
+        ctx.fillText(`T${this.id}`, this.trail[0].x, this.trail[0].y - 7); ctx.restore();
+      } return;
+    }
+    if (this.state === 'atInference') {
+      const c = P.boxCenter(NEW_LAYOUT.inference);
+      const ox = (this.id % 4 - 1.5) * 7, oy = (Math.floor(this.id / 4) % 3 - 1) * 7;
+      const pulse = 0.5 + 0.5 * Math.sin(this.inferenceTimer * 60);
+      ctx.save(); ctx.shadowColor = COLORS.inference; ctx.shadowBlur = 6;
+      ctx.fillStyle = hexToRGBA(COLORS.inference, 0.4 + 0.3*pulse);
+      ctx.beginPath(); ctx.arc(c.x+ox, c.y+oy, 2.5, 0, Math.PI*2); ctx.fill(); ctx.restore(); return;
+    }
+    if (this.state === 'returnToRedis' || this.state === 'returnToFastapi') {
+      const rc = this.state === 'returnToRedis' ? COLORS.supervisor : COLORS.fastapi;
+      for (let i = this.trail.length-1; i >= 1; i--) {
+        ctx.fillStyle = hexToRGBA(rc, (1-i/this.trail.length)*0.4);
+        ctx.beginPath(); ctx.arc(this.trail[i].x, this.trail[i].y, safeR(3*(1-i*0.08)), 0, Math.PI*2); ctx.fill();
+      }
+      if (this.trail.length > 0) drawGlowDot(this.trail[0].x, this.trail[0].y, 3, rc);
+    }
+  }
+}
+
+// ============================================================
+// BOTTOM PANEL: OLD ARCHITECTURE
+// ============================================================
+const botP = createPanel(0.5, 0.5);
+const OLD_LAYOUT = {
+  client:    { x: 0.03, y: 0.30, w: 0.09, h: 0.14 },
+  fastapi:   { x: 0.17, y: 0.30, w: 0.10, h: 0.14 },
+  redis:     { x: 0.34, y: 0.30, w: 0.11, h: 0.14 },
+  consumer1: { x: 0.54, y: 0.08, w: 0.10, h: 0.12 },
+  consumer2: { x: 0.54, y: 0.38, w: 0.10, h: 0.12 },
+  consumer3: { x: 0.54, y: 0.68, w: 0.10, h: 0.12 },
+  inference: { x: 0.74, y: 0.20, w: 0.14, h: 0.45 },
+};
+
+const OLD_PHASES = {
+  clientToFastapi: { start: 0.00, end: 0.06 },
+  fastapiToRedis:  { start: 0.06, end: 0.12 },
+  sseEstablish:    { start: 0.08, end: 0.14 },
+  taskFlow:        { start: 0.14, end: 0.85 },
+};
+
+let oldPackets = [], oldSseAlpha = 0, oldSsePackets = [];
+let oldFlyingTasks = [], oldInferenceQueue = [], oldReturnPackets = [];
+let oldDispatched = 0, oldDone = 0, oldNextDispatch = 0;
+
+const oldConsumers = [
+  { layout: OLD_LAYOUT.consumer1, color: COLORS.consumer1, busy: false },
+  { layout: OLD_LAYOUT.consumer2, color: COLORS.consumer2, busy: false },
+  { layout: OLD_LAYOUT.consumer3, color: COLORS.consumer3, busy: false },
+];
+
+class OldFlyingTask {
+  constructor(id, ci) {
+    this.id = id; this.ci = ci; this.consumer = oldConsumers[ci];
+    this.state = 'toConsumer'; this.progress = 0; this.trail = []; this.alive = true;
+    this.flySpeed = 0.025 + Math.random() * 0.010;
+  }
+  r2c() {
+    const from = botP.boxRight(OLD_LAYOUT.redis), to = botP.boxLeft(this.consumer.layout);
+    const offs = [{ x:0, y:-30 }, { x:0, y:0 }, { x:0, y:30 }];
+    const co = offs[this.ci];
+    if (co.y === 0) return { from, to, cp: null };
+    return { from, cp: { x:(from.x+to.x)/2+co.x, y:(from.y+to.y)/2+co.y }, to };
+  }
+  c2i() {
+    const from = botP.boxRight(this.consumer.layout), to = botP.boxLeft(OLD_LAYOUT.inference);
+    const offs = [{ x:0, y:15 }, { x:0, y:0 }, { x:0, y:-15 }];
+    const co = offs[this.ci];
+    if (co.y === 0) return { from, to, cp: null };
+    return { from, cp: { x:(from.x+to.x)/2+co.x, y:(from.y+to.y)/2+co.y }, to };
+  }
+  update() {
+    this.progress += this.flySpeed;
+    if (this.state === 'toConsumer') {
+      if (this.progress >= 1) { this.progress = 0; this.state = 'toInference'; this.trail = []; }
+      const p = this.r2c(), t = easeInOut(Math.min(this.progress, 1));
+      const pos = p.cp ? quadBezier(p.from, p.cp, p.to, t) : posOnLine(p.from, p.to, t);
+      this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop(); return;
+    }
+    if (this.state === 'toInference') {
+      if (this.progress >= 1) {
+        this.state = 'done'; this.alive = false;
+        oldInferenceQueue.push({ id: this.id, state: 'queued', timer: 0,
+          processTime: 1.5 + Math.pow(Math.random(), 0.5) * 4.0, ci: this.ci });
+        this.consumer.busy = false;
+      }
+      const p = this.c2i(), t = easeInOut(Math.min(this.progress, 1));
+      const pos = p.cp ? quadBezier(p.from, p.cp, p.to, t) : posOnLine(p.from, p.to, t);
+      this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop();
+    }
+  }
+  draw() {
+    const color = this.consumer.color;
+    for (let i = this.trail.length-1; i >= 1; i--) {
+      ctx.fillStyle = hexToRGBA(color, (1-i/this.trail.length)*0.4);
+      ctx.beginPath(); ctx.arc(this.trail[i].x, this.trail[i].y, safeR(3*(1-i*0.1)), 0, Math.PI*2); ctx.fill();
+    }
+    if (this.trail.length > 0) {
+      drawGlowDot(this.trail[0].x, this.trail[0].y, 3, color);
+      ctx.save(); ctx.fillStyle = hexToRGBA('#fff', 0.4);
+      ctx.font = `${Math.max(6, W*0.005)}px monospace`; ctx.textAlign = 'center';
+      ctx.fillText(`T${this.id}`, this.trail[0].x, this.trail[0].y - 7); ctx.restore();
+    }
+  }
+}
+
+// Old return: Inference → Redis → FastAPI (then triggers SSE)
+class OldReturnPacket {
+  constructor(id) {
+    this.id = id; this.phase = 0; // 0: inf→redis, 1: redis→fastapi
+    this.progress = 0; this.trail = []; this.alive = true; this.speed = 0.014; this.sseTriggered = false;
+  }
+  getPath() {
+    if (this.phase === 0) {
+      const from = botP.boxTop(OLD_LAYOUT.inference), to = botP.boxRight(OLD_LAYOUT.redis);
+      return { from, cp: { x: (from.x+to.x)/2, y: (from.y+to.y)/2 - 50 }, to };
+    } else {
+      const from = botP.boxLeft(OLD_LAYOUT.redis), to = botP.boxRight(OLD_LAYOUT.fastapi);
+      return { from, cp: null, to };
+    }
+  }
+  update() {
+    this.progress += this.speed;
+    const p = this.getPath(), t = easeInOut(Math.min(this.progress, 1));
+    const pos = p.cp ? quadBezier(p.from, p.cp, p.to, t) : posOnLine(p.from, p.to, t);
+    this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop();
+    if (this.progress >= 1) {
+      if (this.phase === 0) { this.phase = 1; this.progress = 0; this.trail = []; }
+      else { this.alive = false; }
+    }
+  }
+  draw() {
+    const color = this.phase === 0 ? COLORS.redisStream : COLORS.fastapi;
+    for (let i = this.trail.length-1; i >= 1; i--) {
+      ctx.fillStyle = hexToRGBA(color, (1-i/this.trail.length)*0.4);
+      ctx.beginPath(); ctx.arc(this.trail[i].x, this.trail[i].y, safeR(3*(1-i*0.08)), 0, Math.PI*2); ctx.fill();
+    }
+    if (this.trail.length > 0) drawGlowDot(this.trail[0].x, this.trail[0].y, 3, color);
+  }
+}
+
+// ============================================================
+// GENERIC DataPacket
+// ============================================================
+class DataPacket {
+  constructor(color, from, to, speed, co) {
+    this.from = from; this.to = to; this.color = color; this.co = co || null;
+    this.progress = 0; this.speed = speed || 0.02; this.trail = []; this.alive = true;
+  }
+  update() {
+    this.progress += this.speed; if (this.progress >= 1) { this.alive = false; return; }
+    const t = easeInOut(this.progress);
+    const pos = this.co ? quadBezier(this.from, { x:(this.from.x+this.to.x)/2+this.co.x, y:(this.from.y+this.to.y)/2+this.co.y }, this.to, t) : posOnLine(this.from, this.to, t);
+    this.trail.unshift({...pos}); if (this.trail.length > 8) this.trail.pop();
+  }
+  draw() {
+    for (let i = this.trail.length-1; i >= 1; i--) {
+      ctx.fillStyle = hexToRGBA(this.color, (1-i/this.trail.length)*0.4);
+      ctx.beginPath(); ctx.arc(this.trail[i].x, this.trail[i].y, safeR(4*(1-i*0.08)), 0, Math.PI*2); ctx.fill();
+    }
+    if (this.trail.length > 0) drawGlowDot(this.trail[0].x, this.trail[0].y, 4, this.color);
+  }
+}
+
+// ============================================================
+// SSE drawing helper
+// ============================================================
+function drawSSE(panel, layout, sseAlpha, ssePackets, time) {
+  const from = panel.boxLeft(layout.fastapi);
+  const to = panel.boxLeft(layout.client || layout.client);
+  const cp = { x: (from.x+to.x)/2, y: from.y - 30 };
+
+  const hasActive = ssePackets.length > 0;
+  const alpha = hasActive ? 0.5 : Math.max(0.15 + 0.08 * Math.sin(time*3), sseAlpha);
+
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.strokeStyle = COLORS.sse; ctx.lineWidth = 1.5; ctx.setLineDash([6,4]);
+  ctx.shadowColor = COLORS.sse; ctx.shadowBlur = hasActive ? 12 : 4;
+  ctx.beginPath(); ctx.moveTo(from.x,from.y); ctx.quadraticCurveTo(cp.x,cp.y,to.x,to.y); ctx.stroke();
+  ctx.restore();
+
+  ctx.save(); ctx.fillStyle = COLORS.sse; ctx.globalAlpha = 0.4;
+  ctx.font = `${Math.max(7, W*0.006)}px "SF Mono","Courier New",monospace`; ctx.textAlign = 'center';
+  ctx.fillText('SSE', cp.x, cp.y + 12); ctx.restore();
+
+  for (const sp of ssePackets) {
+    const pos = quadBezier(from, cp, to, sp.progress);
+    drawGlowDot(pos.x, pos.y, 4, COLORS.sse);
+    sp.trail.unshift({x:pos.x,y:pos.y}); if (sp.trail.length > 8) sp.trail.pop();
+    for (let i = 1; i < sp.trail.length; i++) {
+      ctx.fillStyle = hexToRGBA(COLORS.sse, (1-i/sp.trail.length)*0.4);
+      ctx.beginPath(); ctx.arc(sp.trail[i].x, sp.trail[i].y, safeR(3*(1-i*0.08)), 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+// ============================================================
+// AMBIENT PARTICLES
+// ============================================================
+let ambientParticles = [];
+function initAmbient() {
+  for (let i = 0; i < 50; i++)
+    ambientParticles.push({ x: Math.random()*2000, y: Math.random()*2000, vx: (Math.random()-0.5)*0.3, vy: (Math.random()-0.5)*0.3, r: Math.random()*1.2+0.3, a: Math.random()*0.08+0.02 });
+}
+function updateAmbient() { for (const p of ambientParticles) { p.x += p.vx; p.y += p.vy; if(p.x<0)p.x=W; if(p.x>W)p.x=0; if(p.y<0)p.y=H; if(p.y>H)p.y=0; } }
+function drawAmbient() { ctx.shadowBlur = 0; for (const p of ambientParticles) { ctx.fillStyle = hexToRGBA('#6080c0', p.a); ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); } }
+
+// ============================================================
+// ORCHESTRATORS
+// ============================================================
+let lastCycleIndex = -1;
+
+function orchestrateNew(cycleT, dt) {
+  const P = topP, L = NEW_LAYOUT, PH = NEW_PHASES;
+
+  if (cycleT >= PH.clientToFastapi.start && cycleT < PH.clientToFastapi.end && !newPackets.some(p=>p.tag==='c2f')) {
+    const p = new DataPacket(COLORS.client, P.boxRight(L.client), P.boxLeft(L.fastapi), 0.025); p.tag='c2f'; newPackets.push(p);
+  }
+  if (cycleT >= PH.fastapiToRedis.start && cycleT < PH.fastapiToRedis.end && !newPackets.some(p=>p.tag==='f2rs')) {
+    const p1 = new DataPacket(COLORS.fastapi, P.boxRight(L.fastapi), P.boxLeft(L.redisStream), 0.025, {x:0,y:-15}); p1.tag='f2rs'; newPackets.push(p1);
+    const p2 = new DataPacket(COLORS.fastapi, P.boxRight(L.fastapi), P.boxLeft(L.redisCache), 0.025, {x:0,y:15}); p2.tag='f2rc'; newPackets.push(p2);
+  }
+  if (cycleT >= PH.sseEstablish.start) newSseAlpha = clamp((cycleT-PH.sseEstablish.start)/(PH.sseEstablish.end-PH.sseEstablish.start), 0, 0.3);
+  if (cycleT >= PH.redisToWorker.start && cycleT < PH.redisToWorker.end && !newPackets.some(p=>p.tag==='r2w')) {
+    const p = new DataPacket(COLORS.worker, P.boxBottom(L.redisCache), P.boxTop(L.worker), 0.025); p.tag='r2w'; newPackets.push(p);
+  }
+  if (cycleT >= PH.workerToSupervisor.start && cycleT < PH.workerToSupervisor.end && !newPackets.some(p=>p.tag==='w2s')) {
+    const p = new DataPacket(COLORS.supervisor, P.boxRight(L.worker), P.boxLeft(L.supervisor), 0.03, {x:0,y:15}); p.tag='w2s'; newPackets.push(p);
+  }
+
+  // Spawn all tasks
+  if (cycleT >= PH.supervisorSpawn.start && !newAllSpawned) {
+    newAllSpawned = true;
+    for (let i = 0; i < TASK_COUNT; i++) {
+      newSpawnedTasks.push(new NewTask(i+1, -70 + 140*i/(TASK_COUNT-1)));
+    }
+    newTaskCounter = TASK_COUNT;
+  }
+
+  // Semaphore
+  const out = newSpawnedTasks.filter(t => t.state==='spawning'||t.state==='flying'||t.state==='atInference'||t.state==='returnToRedis'||t.state==='returnToFastapi').length;
+  const waiting = newSpawnedTasks.filter(t => t.state==='waitingAtSupervisor');
+  waiting.forEach((t,i) => { t.waitSlot = i; });
+  let slots = SEMAPHORE_LIMIT - out;
+  for (const t of waiting) { if (slots <= 0) break; t.state = 'spawning'; t.trail = []; slots--; }
+
+  for (const t of newSpawnedTasks) {
+    t.update(dt);
+    if (t.state === 'done' && !t.sseTriggered) {
+      t.sseTriggered = true;
+      newSsePackets.push({ progress: 0, trail: [], speed: 0.015 + Math.random()*0.01 });
+    }
+  }
+  newSpawnedTasks = newSpawnedTasks.filter(t => t.alive);
+
+  for (const sp of newSsePackets) sp.progress += sp.speed;
+  newSsePackets = newSsePackets.filter(sp => sp.progress < 1);
+  if (newSsePackets.length > 0) newSseAlpha = Math.max(newSseAlpha, 0.5);
+
+  for (const p of newPackets) p.update();
+  newPackets = newPackets.filter(p => p.alive);
+}
+
+function orchestrateOld(cycleT, dt) {
+  const P = botP, L = OLD_LAYOUT, PH = OLD_PHASES;
+
+  if (cycleT >= PH.clientToFastapi.start && cycleT < PH.clientToFastapi.end && !oldPackets.some(p=>p.tag==='c2f')) {
+    const p = new DataPacket(COLORS.client, P.boxRight(L.client), P.boxLeft(L.fastapi), 0.025); p.tag='c2f'; oldPackets.push(p);
+  }
+  if (cycleT >= PH.fastapiToRedis.start && cycleT < PH.fastapiToRedis.end && !oldPackets.some(p=>p.tag==='f2r')) {
+    const p = new DataPacket(COLORS.fastapi, P.boxRight(L.fastapi), P.boxLeft(L.redis), 0.025); p.tag='f2r'; oldPackets.push(p);
+  }
+  if (cycleT >= PH.sseEstablish.start) oldSseAlpha = clamp((cycleT-PH.sseEstablish.start)/(PH.sseEstablish.end-PH.sseEstablish.start), 0, 0.3);
+
+  // Dispatch
+  if (cycleT >= PH.taskFlow.start && oldDispatched < TASK_COUNT) {
+    if (cycleT >= oldNextDispatch) {
+      const fi = oldConsumers.findIndex(c => !c.busy);
+      if (fi >= 0) {
+        oldDispatched++; oldConsumers[fi].busy = true;
+        oldFlyingTasks.push(new OldFlyingTask(oldDispatched, fi));
+        oldNextDispatch = cycleT + 0.008;
+      }
+    }
+  }
+
+  for (const ft of oldFlyingTasks) ft.update();
+  oldFlyingTasks = oldFlyingTasks.filter(t => t.alive);
+
+  // Inference processing (1 at a time)
+  if (!oldInferenceQueue.find(t => t.state==='processing')) {
+    const next = oldInferenceQueue.find(t => t.state==='queued');
+    if (next) next.state = 'processing';
+  }
+  for (const t of oldInferenceQueue) {
+    t.timer += dt;
+    if (t.state === 'processing' && t.timer >= t.processTime) {
+      t.state = 'done'; oldDone++;
+      oldReturnPackets.push(new OldReturnPacket(t.id));
+    }
+  }
+  oldInferenceQueue = oldInferenceQueue.filter(t => t.state !== 'done');
+
+  for (const rp of oldReturnPackets) {
+    rp.update();
+    if (rp.phase === 1 && rp.progress >= 0.8 && !rp.sseTriggered) {
+      rp.sseTriggered = true;
+      oldSsePackets.push({ progress: 0, trail: [], speed: 0.015 + Math.random()*0.01 });
+    }
+  }
+  oldReturnPackets = oldReturnPackets.filter(rp => rp.alive);
+
+  for (const sp of oldSsePackets) sp.progress += sp.speed;
+  oldSsePackets = oldSsePackets.filter(sp => sp.progress < 1);
+  if (oldSsePackets.length > 0) oldSseAlpha = Math.max(oldSseAlpha, 0.5);
+
+  for (const p of oldPackets) p.update();
+  oldPackets = oldPackets.filter(p => p.alive);
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+function drawBackground() {
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, COLORS.bg1); grad.addColorStop(1, COLORS.bg2);
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = COLORS.grid; ctx.lineWidth = 0.5; ctx.globalAlpha = 0.2;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+  // Divider line
+  ctx.save(); ctx.strokeStyle = COLORS.divider; ctx.lineWidth = 1; ctx.globalAlpha = 0.5;
+  ctx.setLineDash([8,4]);
+  ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawNewPanel(time) {
+  const P = topP, L = NEW_LAYOUT;
+  // Connections
+  P.drawConn(P.boxRight(L.client), P.boxLeft(L.fastapi), COLORS.client, false, 0.3);
+  P.drawCurve(P.boxRight(L.fastapi), P.boxLeft(L.redisStream), {x:0,y:-15}, COLORS.fastapi, false, 0.3);
+  P.drawCurve(P.boxRight(L.fastapi), P.boxLeft(L.redisCache), {x:0,y:15}, COLORS.fastapi, false, 0.3);
+  P.drawConn(P.boxBottom(L.redisCache), P.boxTop(L.worker), COLORS.worker, false, 0.3);
+  P.drawCurve(P.boxRight(L.worker), P.boxLeft(L.supervisor), {x:0,y:15}, COLORS.supervisor, false, 0.3);
+  // Return paths (Inference → Redis → FastAPI)
+  P.drawCurve(P.boxTop(L.inference), P.boxRight(L.redisStream), {x:20,y:-40}, COLORS.supervisor, false, 0.15);
+  P.drawCurve(P.boxLeft(L.redisStream), P.boxTop(L.fastapi), {x:0,y:-20}, COLORS.fastapi, false, 0.15);
+  // SSE: FastAPI → Client
+  drawSSE(P, L, newSseAlpha, newSsePackets, time);
+  // Boxes
+  P.drawBox(L.client, 'Client', COLORS.client, 'Request');
+  P.drawBox(L.fastapi, 'FastAPI', COLORS.fastapi, 'Service');
+  P.drawBox(L.redisStream, 'Redis Stream', COLORS.redisStream);
+  P.drawBox(L.redisCache, 'Redis Cache', COLORS.redisCache);
+  P.drawBox(L.worker, 'Worker', COLORS.worker, '1 Consumer');
+  P.drawBox(L.supervisor, 'Supervisor', COLORS.supervisor, 'asyncio');
+  P.drawBox(L.inference, 'Inference', COLORS.inference, 'Server');
+
+  for (const p of newPackets) p.draw();
+  for (const t of newSpawnedTasks) t.draw();
+
+  // Status
+  if (newTaskCounter > 0) {
+    const w = newSpawnedTasks.filter(t => t.state==='waitingAtSupervisor').length;
+    const o = newSpawnedTasks.filter(t => t.state!=='waitingAtSupervisor').length;
+    const d = TASK_COUNT - newSpawnedTasks.length;
+    const lx = (P.boxRight(L.supervisor).x + P.boxLeft(L.inference).x) / 2;
+    ctx.save();
+    ctx.font = `bold ${Math.max(8,W*0.008)}px "SF Mono","Courier New",monospace`;
+    ctx.textAlign = 'center'; ctx.fillStyle = COLORS.supervisor; ctx.globalAlpha = 0.85;
+    ctx.fillText(`Queued: ${w}  Sent: ${o}/${SEMAPHORE_LIMIT}  Done: ${d}`, lx, P.ly(L.supervisor.y) - 10);
+    // Semaphore bar
+    if (o > 0 || w > 0) {
+      const bx = P.lx(L.supervisor.x), by = P.ly(L.supervisor.y + L.supervisor.h) + 8;
+      const bw = P.lx(L.supervisor.w), bh = 4;
+      ctx.globalAlpha = 0.25; ctx.fillStyle = '#333';
+      roundRect(ctx, bx, by, bw, bh, 2); ctx.fill();
+      ctx.globalAlpha = 0.7; ctx.fillStyle = o >= SEMAPHORE_LIMIT ? '#ff5252' : COLORS.supervisor;
+      roundRect(ctx, bx, by, Math.max((o/SEMAPHORE_LIMIT)*bw, 3), bh, 2); ctx.fill();
+      ctx.globalAlpha = 0.6; ctx.fillStyle = COLORS.text;
+      ctx.font = `${Math.max(7,W*0.006)}px "SF Mono","Courier New",monospace`;
+      ctx.fillText(`sem: ${o}/${SEMAPHORE_LIMIT}`, bx+bw/2, by+bh+9);
+    }
+    ctx.restore();
+  }
+
+  // Title
+  ctx.save(); ctx.fillStyle = COLORS.text; ctx.globalAlpha = 0.75;
+  ctx.font = `bold ${Math.max(12,W*0.012)}px "SF Mono","Fira Code","Courier New",monospace`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = COLORS.supervisor; ctx.shadowBlur = 8;
+  ctx.fillText('New: Supervisor + Semaphore + Fire-and-Forget', W/2, P.ly(0.06));
+  ctx.restore();
+}
+
+function drawOldPanel(time) {
+  const P = botP, L = OLD_LAYOUT;
+  // Connections
+  P.drawConn(P.boxRight(L.client), P.boxLeft(L.fastapi), COLORS.client, false, 0.3);
+  P.drawConn(P.boxRight(L.fastapi), P.boxLeft(L.redis), COLORS.fastapi, false, 0.3);
+  P.drawCurve(P.boxRight(L.redis), P.boxLeft(L.consumer1), {x:0,y:-25}, COLORS.consumer1, false, 0.25);
+  P.drawConn(P.boxRight(L.redis), P.boxLeft(L.consumer2), COLORS.consumer2, false, 0.25);
+  P.drawCurve(P.boxRight(L.redis), P.boxLeft(L.consumer3), {x:0,y:25}, COLORS.consumer3, false, 0.25);
+  P.drawCurve(P.boxRight(L.consumer1), P.boxLeft(L.inference), {x:0,y:15}, COLORS.consumer1, false, 0.2);
+  P.drawConn(P.boxRight(L.consumer2), P.boxLeft(L.inference), COLORS.consumer2, false, 0.2);
+  P.drawCurve(P.boxRight(L.consumer3), P.boxLeft(L.inference), {x:0,y:-15}, COLORS.consumer3, false, 0.2);
+  // Return paths (Inference → Redis → FastAPI)
+  P.drawCurve(P.boxTop(L.inference), P.boxRight(L.redis), {x:0,y:-50}, COLORS.redisStream, false, 0.15);
+  P.drawConn(P.boxLeft(L.redis), P.boxRight(L.fastapi), COLORS.fastapi, false, 0.15);
+  // SSE: FastAPI → Client
+  drawSSE(P, L, oldSseAlpha, oldSsePackets, time);
+  // Boxes
+  P.drawBox(L.client, 'Client', COLORS.client, 'Request');
+  P.drawBox(L.fastapi, 'FastAPI', COLORS.fastapi, 'Service');
+  P.drawBox(L.redis, 'Redis Stream', COLORS.redisStream);
+  P.drawBox(L.consumer1, 'Consumer 1', COLORS.consumer1, 'batch=1');
+  P.drawBox(L.consumer2, 'Consumer 2', COLORS.consumer2, 'batch=1');
+  P.drawBox(L.consumer3, 'Consumer 3', COLORS.consumer3, 'batch=1');
+
+  // Inference box with queue visualization
+  const il = L.inference;
+  const ix = P.lx(il.x), iy = P.ly(il.y), iw = il.w*W, ih = il.h*0.5*H;
+  const qc = oldInferenceQueue.filter(t=>t.state==='queued').length;
+  const pc = oldInferenceQueue.filter(t=>t.state==='processing').length;
+  const pressure = qc / Math.max(TASK_COUNT*0.4, 1);
+
+  ctx.save();
+  ctx.shadowColor = qc > 6 ? '#ff5252' : COLORS.inference;
+  ctx.shadowBlur = 14 + pressure * 25;
+  ctx.fillStyle = COLORS.boxBg; ctx.strokeStyle = qc > 6 ? '#ff5252' : COLORS.inference; ctx.lineWidth = 1.5;
+  roundRect(ctx, ix, iy, iw, ih, 6); ctx.fill(); ctx.stroke(); ctx.restore();
+
+  ctx.fillStyle = COLORS.text;
+  ctx.font = `bold ${Math.max(9,W*0.009)}px "SF Mono","Courier New",monospace`;
+  ctx.textAlign = 'center'; ctx.fillText('Inference', ix+iw/2, iy+14);
+  ctx.fillStyle = COLORS.textDim; ctx.font = `${Math.max(7,W*0.007)}px "SF Mono","Courier New",monospace`;
+  ctx.fillText('Server', ix+iw/2, iy+25);
+
+  // Queue dots inside
+  const allQ = oldInferenceQueue.filter(t=>t.state==='queued'||t.state==='processing');
+  const startY = iy + 34, cols = 4, spc = 9, dr = 3;
+  for (let i = 0; i < allQ.length; i++) {
+    const t = allQ[i], col = i%cols, row = Math.floor(i/cols);
+    const dx = ix + 16 + col*(spc+dr*2), dy = startY + row*(spc+dr*2);
+    if (t.state === 'processing') {
+      const pulse = 0.5+0.5*Math.sin(t.timer*8);
+      ctx.save(); ctx.shadowColor = COLORS.inference; ctx.shadowBlur = 8*pulse;
+      ctx.fillStyle = hexToRGBA(COLORS.inference, 0.6+0.4*pulse);
+      ctx.beginPath(); ctx.arc(dx,dy,dr+1,0,Math.PI*2); ctx.fill(); ctx.restore();
+    } else {
+      const bob = Math.sin(t.timer*3+t.id*0.5)*0.8;
+      ctx.fillStyle = hexToRGBA(COLORS.inference, 0.45);
+      ctx.beginPath(); ctx.arc(dx+bob,dy,dr,0,Math.PI*2); ctx.fill();
+    }
+  }
+  if (allQ.length > 0) {
+    ctx.save(); ctx.fillStyle = qc>6?'#ff5252':COLORS.text; ctx.globalAlpha = 0.7;
+    ctx.font = `bold ${Math.max(7,W*0.007)}px "SF Mono","Courier New",monospace`; ctx.textAlign = 'center';
+    ctx.fillText(`queue: ${qc}  processing: ${pc}`, ix+iw/2, iy+ih-6); ctx.restore();
+  }
+
+  for (const p of oldPackets) p.draw();
+  for (const ft of oldFlyingTasks) ft.draw();
+  for (const rp of oldReturnPackets) rp.draw();
+
+  // Status
+  ctx.save();
+  ctx.font = `bold ${Math.max(8,W*0.008)}px "SF Mono","Courier New",monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = qc > 6 ? '#ff5252' : COLORS.inference; ctx.globalAlpha = 0.85;
+  ctx.fillText(`In-flight: ${oldFlyingTasks.length}  Queued: ${qc}  Done: ${oldDone}/${TASK_COUNT}`, ix+iw/2, iy-10);
+  ctx.restore();
+
+  // Title
+  ctx.save(); ctx.fillStyle = COLORS.text; ctx.globalAlpha = 0.75;
+  ctx.font = `bold ${Math.max(12,W*0.012)}px "SF Mono","Fira Code","Courier New",monospace`;
+  ctx.textAlign = 'center';
+  ctx.shadowColor = COLORS.inference; ctx.shadowBlur = 8;
+  ctx.fillText('Old: 3 Consumers × batch=1, No Semaphore', W/2, P.ly(0.06));
+  ctx.restore();
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+function animate(timestamp) {
+  setupCanvas();
+  if (!animStartTime) { animStartTime = timestamp; lastTimestamp = timestamp; }
+  const elapsed = timestamp - animStartTime;
+  const cycleT = (elapsed % CYCLE_DURATION) / CYCLE_DURATION;
+  const cycleIndex = Math.floor(elapsed / CYCLE_DURATION);
+  const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.05);
+  lastTimestamp = timestamp;
+
+  // Reset on new cycle
+  if (cycleIndex !== lastCycleIndex) {
+    lastCycleIndex = cycleIndex;
+    newPackets=[]; newSpawnedTasks=[]; newSseAlpha=0; newSsePackets=[]; newTaskCounter=0; newAllSpawned=false;
+    oldPackets=[]; oldFlyingTasks=[]; oldInferenceQueue=[]; oldReturnPackets=[]; oldSseAlpha=0; oldSsePackets=[];
+    oldDispatched=0; oldDone=0; oldNextDispatch=OLD_PHASES.taskFlow.start;
+    oldConsumers.forEach(c=>{c.busy=false;});
+  }
+
+  orchestrateNew(cycleT, dt);
+  orchestrateOld(cycleT, dt);
+  updateAmbient();
+
+  drawBackground();
+  drawAmbient();
+  drawNewPanel(timestamp / 1000);
+  drawOldPanel(timestamp / 1000);
+
+  requestAnimationFrame(animate);
+}
+
+initAmbient();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
