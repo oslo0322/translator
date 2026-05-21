@@ -33,6 +33,8 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 .btn:active{transform:translateY(4px)}
 .level{font-size:clamp(24px,5vw,32px);padding:20px 24px;display:flex;flex-direction:column;gap:2px}
 .level small{font-size:.52em;font-weight:700;opacity:.92}
+.lv-beginner{background:#06b6d4;box-shadow:0 6px 0 #0e7490}
+.lv-beginner:active{box-shadow:0 2px 0 #0e7490}
 .lv-easy{background:var(--good);box-shadow:0 6px 0 #15803d}
 .lv-easy:active{box-shadow:0 2px 0 #15803d}
 .lv-mid{background:var(--brand);box-shadow:0 6px 0 #c2410c}
@@ -109,6 +111,7 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
   <div class="rules">🔢 10 題 ・ ⏱️ 限時 80 秒 ・ 🏆 全對 100 分</div>
   <div class="pick">選擇難度 👇</div>
   <div class="levels">
+    <button class="btn level lv-beginner" data-level="beginner">初學<small>20 以內 − 一位數</small></button>
     <button class="btn level lv-easy"  data-level="easy">簡單<small>兩位數 − 一位數</small></button>
     <button class="btn level lv-mid"   data-level="mid">中等<small>兩位數 − 兩位數，不借位</small></button>
     <button class="btn level lv-hard"  data-level="hard">進階<small>兩位數 − 兩位數，有借位</small></button>
@@ -147,7 +150,7 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 (function(){
   const TOTAL = 10;
   const LIMIT = 80;
-  const LEVEL_NAME = {easy:'簡單', mid:'中等', hard:'進階'};
+  const LEVEL_NAME = {beginner:'初學', easy:'簡單', mid:'中等', hard:'進階'};
 
   const startEl   = document.getElementById('start');
   const gameEl    = document.getElementById('game');
@@ -164,6 +167,13 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
   let finished  = false;
 
   const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+
+  // 初學：最大 20，減數一位數，答案不為負
+  function makeBeginner(){
+    const a = rnd(2, 20);
+    const b = rnd(1, Math.min(9, a));
+    return {a, b, answer: a - b};
+  }
 
   // 簡單：兩位數 − 一位數為主，不借位、不為負
   function makeEasy(){
@@ -210,6 +220,7 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
   }
 
   function makeQuestion(){
+    if(level === 'beginner') return makeBeginner();
     if(level === 'mid')  return makeMid();
     if(level === 'hard') return makeHard();
     return makeEasy();
