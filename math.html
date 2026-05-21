@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#fef9c3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="減法挑戰">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>➖</text></svg>">
+<title>減法限時挑戰</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#fef9c3;--card:#ffffff;--ink:#1f2937;--muted:#6b7280;
+  --brand:#f97316;--brand2:#fb923c;--good:#22c55e;--bad:#ef4444;
+  --blue:#3b82f6;--shadow:0 4px 0 rgba(0,0,0,.08);
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Sans","PingFang TC",sans-serif;-webkit-user-select:none;user-select:none}
+body{background:var(--bg);color:var(--ink);overflow-x:hidden}
+
+/* ---------- Start screen ---------- */
+.screen{min-height:100%;display:flex;flex-direction:column}
+#start{align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:24px}
+#start h1{font-size:clamp(32px,7vw,56px);font-weight:900;color:var(--brand)}
+#start .emoji{font-size:clamp(64px,16vw,120px);line-height:1}
+#start .rules{background:var(--card);border-radius:24px;padding:24px 28px;box-shadow:var(--shadow);max-width:560px;width:100%}
+#start .rules li{list-style:none;font-size:clamp(18px,3.6vw,24px);padding:8px 0;font-weight:600}
+.btn{
+  border:none;cursor:pointer;font-weight:900;color:#fff;background:var(--brand);
+  border-radius:999px;box-shadow:0 6px 0 #c2410c;transition:transform .05s,box-shadow .05s;
+  font-family:inherit;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #c2410c}
+#startBtn{font-size:clamp(28px,6vw,40px);padding:20px 64px}
+
+/* ---------- Game ---------- */
+#game{display:none}
+.bar{
+  position:sticky;top:0;z-index:10;background:var(--bg);
+  padding:14px 16px calc(14px + env(safe-area-inset-top,0));
+  padding-top:max(14px,env(safe-area-inset-top,0));
+  border-bottom:3px solid #fde68a;display:flex;align-items:center;gap:14px;
+}
+.timer{font-size:clamp(34px,8vw,52px);font-weight:900;color:var(--brand);font-variant-numeric:tabular-nums;line-height:1;min-width:2.6em;text-align:center}
+.timer.warn{color:var(--bad);animation:pulse .6s infinite alternate}
+@keyframes pulse{to{transform:scale(1.08)}}
+.progress{flex:1;height:18px;background:#fde68a;border-radius:999px;overflow:hidden}
+.progress > i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--brand2),var(--brand));transition:width 1s linear;border-radius:999px}
+
+.grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:14px;padding:16px;padding-bottom:140px;max-width:900px;margin:0 auto;width:100%;
+}
+.q{
+  background:var(--card);border-radius:20px;padding:16px 18px;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:10px;font-size:clamp(26px,5vw,34px);font-weight:800;
+  border:3px solid transparent;
+}
+.q .no{color:var(--muted);font-size:.6em;font-weight:900;min-width:1.6em}
+.q .eq{flex:1;display:flex;align-items:center;justify-content:flex-end;gap:8px;letter-spacing:1px}
+.q input{
+  width:2.4em;font-size:1em;font-weight:900;text-align:center;font-family:inherit;
+  border:none;border-bottom:4px solid var(--brand2);background:#fff7ed;color:var(--blue);
+  border-radius:10px;padding:6px 4px;outline:none;-webkit-user-select:text;user-select:text;
+}
+.q input:focus{background:#ffedd5;border-bottom-color:var(--brand)}
+.q.right{border-color:var(--good);background:#f0fdf4}
+.q.wrong{border-color:var(--bad);background:#fef2f2}
+.q .mark{font-size:.9em;min-width:1.2em;text-align:center}
+.q .correct{font-size:.55em;font-weight:900;color:var(--good)}
+
+.footer{
+  position:fixed;left:0;right:0;bottom:0;padding:14px 16px;
+  padding-bottom:max(14px,env(safe-area-inset-bottom,0));
+  background:linear-gradient(180deg,rgba(254,249,195,0),var(--bg) 35%);
+  display:flex;justify-content:center;
+}
+#submitBtn{font-size:clamp(22px,5vw,30px);padding:16px 56px;background:var(--good);box-shadow:0 6px 0 #15803d}
+#submitBtn:active{box-shadow:0 2px 0 #15803d}
+
+/* ---------- Result ---------- */
+#result{display:none;align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:20px}
+#result .scoreBox{background:var(--card);border-radius:32px;padding:32px 40px;box-shadow:var(--shadow)}
+#result .scoreNum{font-size:clamp(72px,20vw,140px);font-weight:900;line-height:1}
+#result .scoreLabel{font-size:clamp(20px,4vw,26px);font-weight:700;color:var(--muted);margin-top:4px}
+#result .face{font-size:clamp(64px,16vw,110px)}
+#result .msg{font-size:clamp(22px,5vw,32px);font-weight:900}
+#againBtn{font-size:clamp(24px,5vw,34px);padding:18px 56px;background:var(--blue);box-shadow:0 6px 0 #1d4ed8}
+#againBtn:active{box-shadow:0 2px 0 #1d4ed8}
+.review{font-size:16px;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- 開始畫面 -->
+<section id="start" class="screen">
+  <div class="emoji">➖🧮</div>
+  <h1>減法限時挑戰</h1>
+  <ul class="rules">
+    <li>🔢 一共 10 題減法</li>
+    <li>⏱️ 限時 80 秒</li>
+    <li>✏️ 把答案填進空格裡</li>
+    <li>🏆 全對就是 100 分！</li>
+  </ul>
+  <button id="startBtn" class="btn">開始！</button>
+</section>
+
+<!-- 遊戲畫面 -->
+<section id="game" class="screen">
+  <div class="bar">
+    <div id="timer" class="timer">80</div>
+    <div class="progress"><i id="progress"></i></div>
+  </div>
+  <div id="grid" class="grid"></div>
+  <div class="footer">
+    <button id="submitBtn" class="btn">交卷</button>
+  </div>
+</section>
+
+<!-- 結算畫面 -->
+<section id="result" class="screen">
+  <div class="face" id="face">🎉</div>
+  <div class="scoreBox">
+    <div class="scoreNum" id="scoreNum">0</div>
+    <div class="scoreLabel">分</div>
+  </div>
+  <div class="msg" id="msg"></div>
+  <div class="review" id="reviewText"></div>
+  <button id="againBtn" class="btn">再玩一次</button>
+</section>
+
+<script>
+(function(){
+  const TOTAL = 10;
+  const LIMIT = 80;
+  const startEl   = document.getElementById('start');
+  const gameEl    = document.getElementById('game');
+  const resultEl  = document.getElementById('result');
+  const gridEl    = document.getElementById('grid');
+  const timerEl   = document.getElementById('timer');
+  const progEl    = document.getElementById('progress');
+
+  let questions = [];      // {a,b,answer}
+  let timeLeft  = LIMIT;
+  let tick      = null;
+  let finished  = false;
+
+  const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+
+  // 產生「不需借位」的兩位數減法： 每一位數的被減數 >= 減數
+  function makeQuestion(){
+    while(true){
+      const t1 = rnd(1,9);          // 被減數十位
+      const o1 = rnd(0,9);          // 被減數個位
+      const t2 = rnd(0,t1);         // 減數十位 (<=t1，避免借位)
+      const o2 = rnd(0,o1);         // 減數個位 (<=o1，避免借位)
+      const a  = t1*10 + o1;
+      const b  = t2*10 + o2;
+      if(b === 0) continue;         // 減數至少為 1，避免 X-0
+      if(b === a) continue;         // 避免答案為 0 的無聊題
+      return {a, b, answer:a-b};
+    }
+  }
+
+  function buildQuestions(){
+    questions = [];
+    const seen = new Set();
+    while(questions.length < TOTAL){
+      const q = makeQuestion();
+      const key = q.a + '-' + q.b;
+      if(seen.has(key)) continue;   // 避免重複題
+      seen.add(key);
+      questions.push(q);
+    }
+  }
+
+  function renderGrid(){
+    gridEl.innerHTML = '';
+    questions.forEach((q,i)=>{
+      const card = document.createElement('div');
+      card.className = 'q';
+      card.innerHTML =
+        '<span class="no">'+(i+1)+'.</span>'+
+        '<span class="eq">'+q.a+' − '+q.b+' =</span>'+
+        '<input inputmode="numeric" pattern="[0-9]*" maxlength="3" autocomplete="off" '+
+               'aria-label="第'+(i+1)+'題答案" data-i="'+i+'">'+
+        '<span class="mark"></span>';
+      gridEl.appendChild(card);
+    });
+    // 只允許數字
+    gridEl.querySelectorAll('input').forEach(inp=>{
+      inp.addEventListener('input',()=>{ inp.value = inp.value.replace(/[^0-9]/g,''); });
+    });
+  }
+
+  function startTimer(){
+    timeLeft = LIMIT;
+    updateTimer();
+    tick = setInterval(()=>{
+      timeLeft--;
+      updateTimer();
+      if(timeLeft <= 0){ finish(); }
+    },1000);
+  }
+  function updateTimer(){
+    timerEl.textContent = timeLeft;
+    progEl.style.width = (timeLeft/LIMIT*100) + '%';
+    timerEl.classList.toggle('warn', timeLeft <= 10);
+  }
+
+  function startGame(){
+    finished = false;
+    buildQuestions();
+    renderGrid();
+    startEl.style.display  = 'none';
+    resultEl.style.display = 'none';
+    gameEl.style.display   = 'flex';
+    window.scrollTo(0,0);
+    startTimer();
+  }
+
+  function finish(){
+    if(finished) return;
+    finished = true;
+    clearInterval(tick);
+
+    let correct = 0;
+    const inputs = gridEl.querySelectorAll('input');
+    inputs.forEach(inp=>{
+      const i = +inp.dataset.i;
+      const q = questions[i];
+      const card = inp.closest('.q');
+      const mark = card.querySelector('.mark');
+      const val = inp.value.trim();
+      inp.setAttribute('readonly','');
+      card.classList.remove('right','wrong');
+      if(val !== '' && +val === q.answer){
+        correct++;
+        card.classList.add('right');
+        mark.textContent = '✅';
+      }else{
+        card.classList.add('wrong');
+        mark.innerHTML = '❌ <span class="correct">'+q.answer+'</span>';
+      }
+    });
+
+    showResult(correct);
+  }
+
+  function showResult(correct){
+    const score = correct * 10;   // 每題 10 分，共 100 分
+    document.getElementById('scoreNum').textContent = score;
+    document.getElementById('reviewText').textContent =
+      '答對 ' + correct + ' / ' + TOTAL + ' 題';
+
+    let face, msg;
+    if(score === 100){ face='🏆'; msg='太厲害了，全對！'; }
+    else if(score >= 80){ face='🎉'; msg='很棒喔！'; }
+    else if(score >= 60){ face='😀'; msg='不錯，繼續加油！'; }
+    else if(score >= 40){ face='💪'; msg='再多練習一下！'; }
+    else { face='🌱'; msg='慢慢來，會越來越好！'; }
+    document.getElementById('face').textContent = face;
+    document.getElementById('msg').textContent  = msg;
+
+    gameEl.style.display   = 'none';
+    resultEl.style.display = 'flex';
+    window.scrollTo(0,0);
+  }
+
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('againBtn').addEventListener('click', startGame);
+  document.getElementById('submitBtn').addEventListener('click', ()=>{
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    finish();
+  });
+})();
+</script>
+</body>
+</html>
