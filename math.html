@@ -20,28 +20,35 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 
 /* ---------- Start screen ---------- */
 .screen{min-height:100%;display:flex;flex-direction:column}
-#start{align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:24px}
+#start{align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:22px}
 #start h1{font-size:clamp(32px,7vw,56px);font-weight:900;color:var(--brand)}
-#start .emoji{font-size:clamp(64px,16vw,120px);line-height:1}
-#start .rules{background:var(--card);border-radius:24px;padding:24px 28px;box-shadow:var(--shadow);max-width:560px;width:100%}
-#start .rules li{list-style:none;font-size:clamp(18px,3.6vw,24px);padding:8px 0;font-weight:600}
+#start .emoji{font-size:clamp(56px,14vw,110px);line-height:1}
+#start .rules{font-size:clamp(16px,3.4vw,22px);font-weight:700;color:var(--muted)}
+#start .pick{font-size:clamp(20px,4vw,26px);font-weight:900;margin-top:4px}
+.levels{display:flex;flex-direction:column;gap:16px;width:100%;max-width:460px}
 .btn{
-  border:none;cursor:pointer;font-weight:900;color:#fff;background:var(--brand);
-  border-radius:999px;box-shadow:0 6px 0 #c2410c;transition:transform .05s,box-shadow .05s;
-  font-family:inherit;
+  border:none;cursor:pointer;font-weight:900;color:#fff;
+  border-radius:999px;transition:transform .05s,box-shadow .05s;font-family:inherit;
 }
-.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #c2410c}
-#startBtn{font-size:clamp(28px,6vw,40px);padding:20px 64px}
+.btn:active{transform:translateY(4px)}
+.level{font-size:clamp(24px,5vw,32px);padding:20px 24px;display:flex;flex-direction:column;gap:2px}
+.level small{font-size:.52em;font-weight:700;opacity:.92}
+.lv-easy{background:var(--good);box-shadow:0 6px 0 #15803d}
+.lv-easy:active{box-shadow:0 2px 0 #15803d}
+.lv-mid{background:var(--brand);box-shadow:0 6px 0 #c2410c}
+.lv-mid:active{box-shadow:0 2px 0 #c2410c}
+.lv-hard{background:#8b5cf6;box-shadow:0 6px 0 #6d28d9}
+.lv-hard:active{box-shadow:0 2px 0 #6d28d9}
 
 /* ---------- Game ---------- */
 #game{display:none}
 .bar{
   position:sticky;top:0;z-index:10;background:var(--bg);
-  padding:14px 16px calc(14px + env(safe-area-inset-top,0));
-  padding-top:max(14px,env(safe-area-inset-top,0));
-  border-bottom:3px solid #fde68a;display:flex;align-items:center;gap:14px;
+  padding:14px 16px;padding-top:max(14px,env(safe-area-inset-top,0));
+  border-bottom:3px solid #fde68a;display:flex;align-items:center;gap:12px;
 }
-.timer{font-size:clamp(34px,8vw,52px);font-weight:900;color:var(--brand);font-variant-numeric:tabular-nums;line-height:1;min-width:2.6em;text-align:center}
+.lvTag{font-size:clamp(13px,3vw,16px);font-weight:900;color:#fff;background:var(--blue);padding:6px 12px;border-radius:999px;white-space:nowrap}
+.timer{font-size:clamp(34px,8vw,52px);font-weight:900;color:var(--brand);font-variant-numeric:tabular-nums;line-height:1;min-width:2.4em;text-align:center}
 .timer.warn{color:var(--bad);animation:pulse .6s infinite alternate}
 @keyframes pulse{to{transform:scale(1.08)}}
 .progress{flex:1;height:18px;background:#fde68a;border-radius:999px;overflow:hidden}
@@ -79,15 +86,18 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 #submitBtn:active{box-shadow:0 2px 0 #15803d}
 
 /* ---------- Result ---------- */
-#result{display:none;align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:20px}
-#result .scoreBox{background:var(--card);border-radius:32px;padding:32px 40px;box-shadow:var(--shadow)}
+#result{display:none;align-items:center;justify-content:center;text-align:center;padding:32px 20px;gap:18px}
+#result .scoreBox{background:var(--card);border-radius:32px;padding:28px 40px;box-shadow:var(--shadow)}
 #result .scoreNum{font-size:clamp(72px,20vw,140px);font-weight:900;line-height:1}
 #result .scoreLabel{font-size:clamp(20px,4vw,26px);font-weight:700;color:var(--muted);margin-top:4px}
 #result .face{font-size:clamp(64px,16vw,110px)}
 #result .msg{font-size:clamp(22px,5vw,32px);font-weight:900}
-#againBtn{font-size:clamp(24px,5vw,34px);padding:18px 56px;background:var(--blue);box-shadow:0 6px 0 #1d4ed8}
-#againBtn:active{box-shadow:0 2px 0 #1d4ed8}
 .review{font-size:16px;color:var(--muted);font-weight:700}
+.resultBtns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+#againBtn{font-size:clamp(20px,4.5vw,28px);padding:16px 40px;background:var(--blue);box-shadow:0 6px 0 #1d4ed8}
+#againBtn:active{box-shadow:0 2px 0 #1d4ed8}
+#menuBtn{font-size:clamp(20px,4.5vw,28px);padding:16px 40px;background:var(--muted);box-shadow:0 6px 0 #374151}
+#menuBtn:active{box-shadow:0 2px 0 #374151}
 </style>
 </head>
 <body>
@@ -96,18 +106,19 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 <section id="start" class="screen">
   <div class="emoji">➖🧮</div>
   <h1>減法限時挑戰</h1>
-  <ul class="rules">
-    <li>🔢 一共 10 題減法</li>
-    <li>⏱️ 限時 80 秒</li>
-    <li>✏️ 把答案填進空格裡</li>
-    <li>🏆 全對就是 100 分！</li>
-  </ul>
-  <button id="startBtn" class="btn">開始！</button>
+  <div class="rules">🔢 10 題 ・ ⏱️ 限時 80 秒 ・ 🏆 全對 100 分</div>
+  <div class="pick">選擇難度 👇</div>
+  <div class="levels">
+    <button class="btn level lv-easy"  data-level="easy">簡單<small>兩位數 − 一位數</small></button>
+    <button class="btn level lv-mid"   data-level="mid">中等<small>兩位數 − 兩位數，不借位</small></button>
+    <button class="btn level lv-hard"  data-level="hard">進階<small>兩位數 − 兩位數，有借位</small></button>
+  </div>
 </section>
 
 <!-- 遊戲畫面 -->
 <section id="game" class="screen">
   <div class="bar">
+    <div id="lvTag" class="lvTag">簡單</div>
     <div id="timer" class="timer">80</div>
     <div class="progress"><i id="progress"></i></div>
   </div>
@@ -126,20 +137,27 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
   </div>
   <div class="msg" id="msg"></div>
   <div class="review" id="reviewText"></div>
-  <button id="againBtn" class="btn">再玩一次</button>
+  <div class="resultBtns">
+    <button id="againBtn" class="btn">再玩一次</button>
+    <button id="menuBtn" class="btn">選難度</button>
+  </div>
 </section>
 
 <script>
 (function(){
   const TOTAL = 10;
   const LIMIT = 80;
+  const LEVEL_NAME = {easy:'簡單', mid:'中等', hard:'進階'};
+
   const startEl   = document.getElementById('start');
   const gameEl    = document.getElementById('game');
   const resultEl  = document.getElementById('result');
   const gridEl    = document.getElementById('grid');
   const timerEl   = document.getElementById('timer');
   const progEl    = document.getElementById('progress');
+  const lvTagEl   = document.getElementById('lvTag');
 
+  let level     = 'easy';
   let questions = [];      // {a,b,answer}
   let timeLeft  = LIMIT;
   let tick      = null;
@@ -147,28 +165,65 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 
   const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
 
-  // 產生「不需借位」的兩位數減法： 每一位數的被減數 >= 減數
-  function makeQuestion(){
+  // 簡單：兩位數 − 一位數為主，不借位、不為負
+  function makeEasy(){
     while(true){
-      const t1 = rnd(1,9);          // 被減數十位
-      const o1 = rnd(0,9);          // 被減數個位
-      const t2 = rnd(0,t1);         // 減數十位 (<=t1，避免借位)
-      const o2 = rnd(0,o1);         // 減數個位 (<=o1，避免借位)
+      const t1 = rnd(1,9);
+      const o1 = rnd(0,9);
       const a  = t1*10 + o1;
-      const b  = t2*10 + o2;
-      if(b === 0) continue;         // 減數至少為 1，避免 X-0
-      if(b === a) continue;         // 避免答案為 0 的無聊題
+      let b;
+      if(Math.random() < 0.75){          // 大多是一位數減數
+        if(o1 === 0) continue;           // 個位 0 無法在不借位下減一位數
+        b = rnd(1, o1);
+      }else{                              // 少部分小的兩位數減數，仍不借位
+        const t2 = rnd(1, t1);
+        const o2 = rnd(0, o1);
+        b = t2*10 + o2;
+      }
+      if(b === 0 || b === a) continue;
       return {a, b, answer:a-b};
     }
+  }
+
+  // 中等：兩位數 − 兩位數，不借位、不為負
+  function makeMid(){
+    while(true){
+      const t1 = rnd(1,9);
+      const o1 = rnd(0,9);
+      const t2 = rnd(1, t1);             // 減數十位 >=1 (兩位數)，<=t1 不借位
+      const o2 = rnd(0, o1);             // 減數個位 <=o1 不借位
+      const a  = t1*10 + o1;
+      const b  = t2*10 + o2;
+      if(b === a) continue;              // 避免答案 0
+      return {a, b, answer:a-b};
+    }
+  }
+
+  // 進階：兩位數 − 兩位數，有借位、不為負
+  function makeHard(){
+    while(true){
+      const a = rnd(11,99);
+      const b = rnd(10, a-1);            // 兩位數且 < a → 結果為正
+      if((a % 10) >= (b % 10)) continue; // 個位需借位
+      return {a, b, answer:a-b};
+    }
+  }
+
+  function makeQuestion(){
+    if(level === 'mid')  return makeMid();
+    if(level === 'hard') return makeHard();
+    return makeEasy();
   }
 
   function buildQuestions(){
     questions = [];
     const seen = new Set();
-    while(questions.length < TOTAL){
+    let guard = 0;
+    while(questions.length < TOTAL && guard < 5000){
+      guard++;
       const q = makeQuestion();
       const key = q.a + '-' + q.b;
-      if(seen.has(key)) continue;   // 避免重複題
+      if(seen.has(key)) continue;        // 避免重複題
       seen.add(key);
       questions.push(q);
     }
@@ -187,7 +242,6 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
         '<span class="mark"></span>';
       gridEl.appendChild(card);
     });
-    // 只允許數字
     gridEl.querySelectorAll('input').forEach(inp=>{
       inp.addEventListener('input',()=>{ inp.value = inp.value.replace(/[^0-9]/g,''); });
     });
@@ -208,8 +262,10 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
     timerEl.classList.toggle('warn', timeLeft <= 10);
   }
 
-  function startGame(){
+  function startGame(lv){
+    level = lv;
     finished = false;
+    lvTagEl.textContent = LEVEL_NAME[level];
     buildQuestions();
     renderGrid();
     startEl.style.display  = 'none';
@@ -219,14 +275,21 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
     startTimer();
   }
 
+  function gotoMenu(){
+    clearInterval(tick);
+    gameEl.style.display   = 'none';
+    resultEl.style.display = 'none';
+    startEl.style.display  = 'flex';
+    window.scrollTo(0,0);
+  }
+
   function finish(){
     if(finished) return;
     finished = true;
     clearInterval(tick);
 
     let correct = 0;
-    const inputs = gridEl.querySelectorAll('input');
-    inputs.forEach(inp=>{
+    gridEl.querySelectorAll('input').forEach(inp=>{
       const i = +inp.dataset.i;
       const q = questions[i];
       const card = inp.closest('.q');
@@ -251,7 +314,7 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
     const score = correct * 10;   // 每題 10 分，共 100 分
     document.getElementById('scoreNum').textContent = score;
     document.getElementById('reviewText').textContent =
-      '答對 ' + correct + ' / ' + TOTAL + ' 題';
+      LEVEL_NAME[level] + '　答對 ' + correct + ' / ' + TOTAL + ' 題';
 
     let face, msg;
     if(score === 100){ face='🏆'; msg='太厲害了，全對！'; }
@@ -267,8 +330,11 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
     window.scrollTo(0,0);
   }
 
-  document.getElementById('startBtn').addEventListener('click', startGame);
-  document.getElementById('againBtn').addEventListener('click', startGame);
+  document.querySelectorAll('.level').forEach(b=>{
+    b.addEventListener('click', ()=> startGame(b.dataset.level));
+  });
+  document.getElementById('againBtn').addEventListener('click', ()=> startGame(level));
+  document.getElementById('menuBtn').addEventListener('click', gotoMenu);
   document.getElementById('submitBtn').addEventListener('click', ()=>{
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     finish();
