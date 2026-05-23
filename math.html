@@ -184,16 +184,10 @@ body{background:var(--bg);color:var(--ink);overflow-x:hidden}
 
   const rnd = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
 
-  // 初學：最大 20，減數一位數，答案不為負。一半單位數、一半 10–20
+  // 初學：被減數固定 10–20，減數一位數
   function makeBeginner(){
-    let a, b;
-    if(Math.random() < 0.5){
-      a = rnd(2, 9);
-      b = rnd(1, a - 1);
-    }else{
-      a = rnd(10, 20);
-      b = rnd(1, 9);
-    }
+    const a = rnd(10, 20);
+    const b = rnd(1, 9);
     return {a, b, answer: a - b};
   }
 
