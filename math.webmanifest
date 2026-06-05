@@ -1,0 +1,17 @@
+{
+  "name": "減法闖關",
+  "short_name": "減法闖關",
+  "description": "100 以內減法練習闖關遊戲",
+  "start_url": "./math.html",
+  "display": "standalone",
+  "background_color": "#fdf6e3",
+  "theme_color": "#fdf6e3",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🦊</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
