@@ -232,9 +232,44 @@ body{
 .confetti-bit{position:absolute;top:-20px;width:11px;height:16px;border-radius:2px;animation:fall linear forwards;}
 @keyframes fall{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(105vh) rotate(540deg)}}
 
+/* ===== 手機 / 直向：改成可捲動的單欄堆疊 ===== */
 @media (max-width:880px){
-  .start-grid,.quiz-body,.result-body{grid-template-columns:1fr;}
-  .result-body{display:none;}
+  html,body{height:auto;overflow-x:hidden;overflow-y:auto;}
+  .app{width:100%;height:auto;min-height:100dvh;overflow:visible;}
+  .stage{height:auto;min-height:100dvh;align-items:flex-start;padding:16px 14px 28px;}
+  .screen{width:100%;max-height:none;gap:16px;}
+
+  .start-grid,.quiz-body,.result-body{grid-template-columns:minmax(0,1fr);display:grid;}
+
+  /* 首頁 */
+  .chips{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .result-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+  .brand{margin-bottom:2px;}
+  .brand-mascot{font-size:42px;}
+  .brand-title{font-size:30px;}
+  .brand-sub{font-size:15px;}
+  .panel{padding:20px;border-radius:22px;}
+
+  /* 作答頁 */
+  .quiz-top{flex-wrap:wrap;}
+  .q-stage{padding:22px;}
+  .q-counter{margin-bottom:12px;text-align:center;}
+  .q-equation .num{font-size:clamp(40px,13vw,72px);}
+  .q-equation .op{font-size:clamp(28px,9vw,52px);}
+  .answer-box{font-size:clamp(40px,13vw,72px);min-width:84px;height:84px;border-width:4px;}
+  .keypad{grid-auto-rows:auto;gap:10px;}
+  .key{padding:16px 0;}
+  .quiz-foot{flex-wrap:wrap;}
+  .quiz-foot .btn3d{min-width:0;flex:1 1 auto;}
+  .quiz-foot .ghost-btn{flex:1 1 auto;text-align:center;}
+
+  /* 結果頁（恢復顯示訂正 + 排行榜） */
+  .result{overflow:visible;}
+  .result-body{display:grid;}
+  .result-grid{gap:10px;}
+  .stat-card{padding:14px 8px;border-radius:18px;}
+  .review{overflow:visible;}
+  .result-foot{flex-wrap:wrap;justify-content:center;}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms !important;}
