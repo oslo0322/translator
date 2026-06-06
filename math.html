@@ -117,7 +117,9 @@ body{
 
 /* ===== 首頁 ===== */
 .brand{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
-.brand-mascot{font-size:54px;filter:drop-shadow(0 6px 8px rgba(0,0,0,.15));animation:floaty 5s ease-in-out infinite;}
+.brand-mascot{font-size:54px;filter:drop-shadow(0 6px 8px rgba(0,0,0,.15));animation:floaty 5s ease-in-out infinite;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.mascot-sprite{width:64px;height:64px;image-rendering:pixelated;display:block;}
+.mascot-name{font-size:11px;font-weight:900;color:var(--violet-d);letter-spacing:.3px;}
 .brand-title{font-size:40px;font-weight:900;line-height:1;}
 .brand-sub{font-size:17px;color:var(--ink-soft);font-weight:700;margin-top:6px;}
 .brand-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
@@ -408,7 +410,7 @@ body{
   .chips{grid-template-columns:repeat(4,minmax(0,1fr));}
   .result-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .brand{margin-bottom:2px;}
-  .brand-mascot{font-size:42px;}
+  .brand-mascot{font-size:42px;}.mascot-sprite{width:52px;height:52px;}
   .brand-title{font-size:30px;}
   .brand-sub{font-size:15px;white-space:nowrap;}
   /* hide redemption hint in header on mobile — saves space, user sees it on result screen */
@@ -833,6 +835,10 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
   const [count, setCount] = useState(10);
   const [sideTab, setSideTab] = useState("lb");  // "lb" | "dex"
   const counts = [3, 5, 8, 10];
+  const [mascot, setMascot] = useState(null);
+  useEffect(() => {
+    window.fetchPokemonData(window.randInt(1, 151)).then(setMascot).catch(() => {});
+  }, []);
 
   const ranked = window.rankRecords(records);
   const best = ranked[0];
@@ -841,7 +847,11 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
     <div className="screen start">
       <PokeCallout points={points} onRedeem={onRedeem} />
       <header className="brand">
-        <div className="brand-mascot">🦊</div>
+        <div className="brand-mascot">
+          {mascot
+            ? <><img src={mascot.sprite} alt={mascot.nameZh} className="mascot-sprite" /><span className="mascot-name">{mascot.nameZh}</span></>
+            : <span>🦊</span>}
+        </div>
         <div>
           <h1 className="brand-title">減法闖關</h1>
           <p className="brand-sub">100 以內 · 算得快又準！</p>
