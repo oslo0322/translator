@@ -31,6 +31,7 @@
   --green:     oklch(0.72 0.15 150);
   --green-d:   oklch(0.60 0.15 150);
   --gold:      oklch(0.82 0.15 85);
+  --gold-d:    oklch(0.66 0.14 70);
   --red:       oklch(0.62 0.19 25);
 
   --font-num: 'Fredoka','Noto Sans TC',sans-serif;
@@ -83,6 +84,8 @@ body{
 .btn3d.secondary:active:not(:disabled){box-shadow:0 1px 0 var(--violet-d),0 4px 8px oklch(0.5 0.1 285 / .25);}
 .btn3d.go{background:var(--green);box-shadow:0 6px 0 var(--green-d),0 12px 18px oklch(0.5 0.1 150 / .25);}
 .btn3d.go:active:not(:disabled){box-shadow:0 1px 0 var(--green-d),0 4px 8px oklch(0.5 0.1 150 / .25);}
+.btn3d.gold{background:var(--gold);box-shadow:0 6px 0 var(--gold-d),0 12px 18px oklch(0.7 0.13 70 / .3);color:oklch(0.30 0.08 70);}
+.btn3d.gold:active:not(:disabled){box-shadow:0 1px 0 var(--gold-d),0 4px 8px oklch(0.7 0.13 70 / .25);}
 
 .ghost-btn{
   border:2.5px solid var(--line);background:var(--surface);color:var(--ink-soft);
@@ -101,11 +104,23 @@ body{
 .star.pop{animation:starPop .5s cubic-bezier(.2,1.4,.4,1) both;}
 @keyframes starPop{0%{transform:scale(0) rotate(-40deg);opacity:0}100%{transform:scale(1) rotate(0);opacity:1}}
 
+/* ===== 點數徽章 ===== */
+.points-badge{
+  display:flex;align-items:center;gap:5px;
+  background:var(--gold);border-radius:999px;padding:7px 14px;
+  font-weight:900;font-size:16px;color:oklch(0.30 0.08 70);
+  box-shadow:0 4px 0 var(--gold-d);white-space:nowrap;cursor:default;
+  transition:transform .2s,box-shadow .2s;
+}
+.points-badge.pop{animation:badgePop .4s cubic-bezier(.2,1.3,.4,1);}
+@keyframes badgePop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+
 /* ===== 首頁 ===== */
 .brand{display:flex;align-items:center;gap:16px;margin-bottom:20px;}
 .brand-mascot{font-size:54px;filter:drop-shadow(0 6px 8px rgba(0,0,0,.15));animation:floaty 5s ease-in-out infinite;}
 .brand-title{font-size:40px;font-weight:900;line-height:1;}
 .brand-sub{font-size:17px;color:var(--ink-soft);font-weight:700;margin-top:6px;}
+.brand-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
 
 .start-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;flex:1;min-height:0;}
 .panel{background:var(--surface);border-radius:28px;padding:26px;box-shadow:0 10px 30px oklch(0.5 0.05 285 / .12);display:flex;flex-direction:column;border:1px solid oklch(0.94 0.01 285);}
@@ -141,6 +156,15 @@ body{
 .empty-emo{font-size:46px;}
 .empty p{font-weight:700;line-height:1.5;}
 
+/* 分頁 tabs */
+.panel-tabs{display:flex;gap:8px;margin-bottom:14px;}
+.panel-tab{
+  flex:1;padding:8px 4px;font-family:var(--font-ui);font-weight:900;font-size:14px;
+  border:2.5px solid var(--line);border-radius:12px;background:var(--surface-2);
+  color:var(--ink-soft);cursor:pointer;transition:all .14s;
+}
+.panel-tab.active{border-color:var(--violet);background:oklch(0.96 0.025 285);color:var(--violet-d);}
+
 .leaderboard{list-style:none;display:flex;flex-direction:column;gap:8px;}
 .lb-row{display:grid;grid-template-columns:24px 30px 1fr auto auto;align-items:center;gap:10px;background:var(--surface-2);border-radius:14px;padding:9px 12px;font-weight:700;}
 .lb-row.gold{background:oklch(0.95 0.06 85);box-shadow:inset 0 0 0 2px var(--gold);}
@@ -155,9 +179,25 @@ body{
 .best-label{font-size:13px;font-weight:900;color:var(--violet-d);letter-spacing:1px;}
 .best-detail{font-weight:700;color:var(--ink-soft);font-size:15px;}
 
+/* 圖鑑 */
+.pokedex-meta{font-size:13px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;}
+.pokedex-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;
+  overflow-y:auto;max-height:220px;
+}
+.poke-thumb{
+  display:flex;flex-direction:column;align-items:center;
+  background:var(--surface-2);border-radius:12px;padding:6px 4px;text-align:center;
+  border:2px solid var(--line);transition:.12s;
+}
+.poke-thumb:hover{border-color:var(--violet);transform:translateY(-2px);}
+.poke-thumb img{width:52px;height:52px;image-rendering:pixelated;}
+.poke-thumb-name{font-size:10px;font-weight:700;color:var(--ink-soft);margin-top:2px;line-height:1.2;}
+.pokedex-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;gap:8px;color:var(--ink-soft);font-weight:700;font-size:13px;text-align:center;}
+
 /* ===== 作答頁 ===== */
 .quiz{gap:16px;}
-.quiz-top{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.quiz-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .player-pill{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:999px;padding:7px 16px 7px 8px;box-shadow:0 4px 12px rgba(0,0,0,.08);font-weight:900;white-space:nowrap;}
 .pp-ava{font-size:24px;}
 .dots{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;flex:1;}
@@ -206,6 +246,20 @@ body{
 .result-title{font-size:clamp(22px,3.4vh,30px);font-weight:900;}
 .best-flag{background:var(--gold);color:oklch(0.36 0.08 70);font-weight:900;padding:6px 18px;border-radius:999px;font-size:16px;box-shadow:0 4px 0 oklch(0.7 0.13 70);white-space:nowrap;}
 
+/* 本局點數 */
+.points-earned-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
+.points-earned-tag{
+  display:flex;align-items:center;gap:6px;
+  background:oklch(0.96 0.06 85);border:2px solid var(--gold);
+  border-radius:999px;padding:6px 16px;
+  font-weight:900;font-size:17px;color:var(--gold-d);
+}
+.speed-bonus-tag{
+  background:var(--green);color:#fff;font-size:12px;font-weight:900;
+  padding:2px 8px;border-radius:999px;margin-left:2px;
+}
+.points-total-note{font-size:14px;font-weight:700;color:var(--ink-soft);}
+
 .result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 .stat-card{background:var(--surface);border-radius:22px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:2px;box-shadow:0 8px 22px oklch(0.5 0.05 285 / .12);border:1px solid oklch(0.94 0.01 285);}
 .stat-ico{font-size:26px;}
@@ -225,14 +279,80 @@ body{
 .wgiven{font-weight:700;color:var(--red);font-size:15px;text-decoration:line-through;text-decoration-color:oklch(0.62 0.19 25 / .5);}
 .wright{font-weight:900;color:var(--green-d);background:oklch(0.93 0.06 150);padding:4px 12px;border-radius:10px;font-family:var(--font-num);}
 
-.result-foot{display:flex;align-items:center;justify-content:flex-end;gap:14px;}
+.result-foot{display:flex;align-items:center;justify-content:flex-end;gap:14px;flex-wrap:wrap;}
 
 /* ===== 慶祝彩帶 ===== */
 .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5;}
 .confetti-bit{position:absolute;top:-20px;width:11px;height:16px;border-radius:2px;animation:fall linear forwards;}
 @keyframes fall{0%{transform:translateY(-20px) rotate(0)}100%{transform:translateY(105vh) rotate(540deg)}}
 
-/* ===== 手機 / 直向：改成可捲動的單欄堆疊 ===== */
+/* ===== 寶可夢兌換 Modal ===== */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  animation:mdFadeIn .22s ease;
+}
+@keyframes mdFadeIn{from{opacity:0}to{opacity:1}}
+
+.modal-box{
+  background:var(--surface);border-radius:32px;
+  padding:30px 26px 26px;width:min(540px,94vw);
+  box-shadow:0 32px 80px rgba(0,0,0,.38);
+  animation:mdSlideUp .3s cubic-bezier(.2,1,.3,1);
+  overflow:hidden;
+}
+@keyframes mdSlideUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+
+.modal-title{font-size:24px;font-weight:900;text-align:center;margin-bottom:4px;}
+.modal-sub{font-size:15px;color:var(--ink-soft);font-weight:700;text-align:center;margin-bottom:20px;}
+
+.poke-choices{display:flex;gap:14px;justify-content:center;margin-bottom:22px;}
+.poke-choice-btn{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  background:var(--surface-2);border:3px solid var(--line);border-radius:20px;
+  padding:16px 10px;cursor:pointer;transition:all .15s;
+  width:150px;min-height:172px;
+}
+.poke-choice-btn:hover:not(:disabled){
+  border-color:var(--coral);transform:translateY(-5px);
+  box-shadow:0 12px 28px oklch(0.7 0.17 32 / .22);
+}
+.poke-choice-btn.selected{
+  border-color:var(--gold);background:oklch(0.97 0.06 85);
+  box-shadow:0 0 0 3px var(--gold);transform:translateY(-3px);
+}
+.poke-choice-btn:disabled{cursor:default;}
+.poke-sprite-wrap{width:100px;height:100px;display:flex;align-items:center;justify-content:center;}
+.poke-sprite{
+  width:96px;height:96px;image-rendering:pixelated;
+  filter:brightness(0);transition:filter .7s ease;
+}
+.poke-sprite.revealed{
+  filter:brightness(1);
+  animation:pokeReveal .65s cubic-bezier(.2,1.15,.4,1);
+}
+@keyframes pokeReveal{
+  0%{transform:scale(.5) rotate(-8deg);opacity:0}
+  60%{transform:scale(1.2) rotate(4deg)}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+.poke-choice-name{
+  font-size:14px;font-weight:900;color:var(--ink-soft);
+  text-align:center;min-height:20px;line-height:1.2;
+}
+.poke-choice-name.revealed{color:var(--violet-d);font-size:15px;}
+
+.modal-footer{display:flex;justify-content:center;gap:12px;min-height:52px;align-items:center;}
+.modal-hint{font-size:14px;font-weight:700;color:var(--ink-soft);}
+
+/* 兌換入口按鈕（result-foot 裡） */
+.redeem-cta{
+  display:flex;align-items:center;gap:8px;
+  animation:redeemPulse 1.6s ease-in-out infinite;
+}
+@keyframes redeemPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+
+/* ===== 手機 / 直向 ===== */
 @media (max-width:880px){
   html,body{height:auto;overflow-x:hidden;overflow-y:auto;}
   .app{width:100%;height:auto;min-height:100dvh;overflow:visible;}
@@ -241,16 +361,18 @@ body{
 
   .start-grid,.quiz-body,.result-body{grid-template-columns:minmax(0,1fr);display:grid;}
 
-  /* 首頁 */
   .chips{grid-template-columns:repeat(4,minmax(0,1fr));}
   .result-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
   .brand{margin-bottom:2px;}
   .brand-mascot{font-size:42px;}
   .brand-title{font-size:30px;}
-  .brand-sub{font-size:15px;}
+  .brand-sub{font-size:15px;white-space:nowrap;}
+  /* hide redemption hint in header on mobile — saves space, user sees it on result screen */
+  .redeem-hint{display:none;}
   .panel{padding:20px;border-radius:22px;}
 
-  /* 作答頁 */
+  /* quiz-top: hide badge so dots container has room to lay out horizontally */
+  .quiz-top .points-badge{display:none;}
   .quiz-top{flex-wrap:wrap;}
   .q-stage{padding:22px;}
   .q-counter{margin-bottom:12px;text-align:center;}
@@ -263,13 +385,19 @@ body{
   .quiz-foot .btn3d{min-width:0;flex:1 1 auto;}
   .quiz-foot .ghost-btn{flex:1 1 auto;text-align:center;}
 
-  /* 結果頁（恢復顯示訂正 + 排行榜） */
   .result{overflow:visible;}
   .result-body{display:grid;}
   .result-grid{gap:10px;}
   .stat-card{padding:14px 8px;border-radius:18px;}
   .review{overflow:visible;}
   .result-foot{flex-wrap:wrap;justify-content:center;}
+
+  .poke-choices{gap:8px;}
+  .poke-choice-btn{width:calc(33% - 8px);min-height:140px;padding:12px 6px;}
+  .poke-sprite-wrap{width:80px;height:80px;}
+  .poke-sprite{width:72px;height:72px;}
+  .poke-choice-name{font-size:12px;}
+  .modal-box{padding:24px 16px 20px;}
 }
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:.01ms !important;}
@@ -283,27 +411,24 @@ body{
 <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-<!-- ===== 題目生成 + 本機儲存 + 共用小元件 ===== -->
+<!-- ===== 工具函式 + localStorage ===== -->
 <script type="text/babel" data-presets="react">
-// ===== 題目生成 + 本機儲存 + 共用小元件 =====
 
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-// 減法題目：被減數(a) ≤ 100、減數(b) ≤ 100、差(a-b) ≥ 0
 function genQuestions(count) {
   const qs = [];
   let guard = 0;
   while (qs.length < count && guard < count * 40) {
     guard++;
-    const a = randInt(11, 100);      // 被減數
-    const b = randInt(1, a);         // 減數 ≤ 被減數 → 差 ≥ 0，且 ≤100
+    const a = randInt(11, 100);
+    const b = randInt(1, a);
     const key = a + "-" + b;
-    if (qs.some((q) => q.key === key)) continue; // 避免完全重複
+    if (qs.some((q) => q.key === key)) continue;
     qs.push({ a, b, answer: a - b, key });
   }
-  // 若湊不滿（極少數情況）就允許重複補齊
   while (qs.length < count) {
     const a = randInt(11, 100);
     const b = randInt(1, a);
@@ -312,9 +437,11 @@ function genQuestions(count) {
   return qs;
 }
 
-// ---- 本機儲存 ----
-const PROFILE_KEY = "math_sub_profile_v1";
-const RECORDS_KEY = "math_sub_records_v1";
+// ---- 基本 localStorage ----
+const PROFILE_KEY  = "math_sub_profile_v1";
+const RECORDS_KEY  = "math_sub_records_v1";
+const POINTS_KEY   = "math_sub_points_v1";
+const POKEDEX_KEY  = "math_sub_pokedex_v1";
 
 const AVATARS = ["🦊", "🐼", "🐯", "🐰", "🐸", "🐧", "🦄", "🐙"];
 
@@ -346,7 +473,38 @@ function addRecord(rec) {
   return all;
 }
 
-// 排行榜排序：先看正確率，再看用時最短
+// ---- 點數 ----
+function loadPoints() {
+  try { return Math.max(0, parseInt(localStorage.getItem(POINTS_KEY)) || 0); } catch (e) { return 0; }
+}
+function savePoints(n) {
+  try { localStorage.setItem(POINTS_KEY, String(n)); } catch (e) {}
+}
+function addPoints(delta) {
+  const n = Math.max(0, loadPoints() + delta);
+  savePoints(n);
+  return n;
+}
+
+// ---- 圖鑑（存每次捕捉，去重後顯示） ----
+function loadPokedex() {
+  try {
+    const d = JSON.parse(localStorage.getItem(POKEDEX_KEY));
+    if (Array.isArray(d)) return d;
+  } catch (e) {}
+  return [];
+}
+function savePokedex(arr) {
+  try { localStorage.setItem(POKEDEX_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+function catchPokemon(poke) {
+  const arr = loadPokedex();
+  arr.push(poke);
+  savePokedex(arr);
+  return arr;
+}
+
+// ---- 排行榜 ----
 function rankRecords(records) {
   return [...records].sort((x, y) => {
     if (y.accuracy !== x.accuracy) return y.accuracy - x.accuracy;
@@ -354,7 +512,6 @@ function rankRecords(records) {
   });
 }
 
-// 星星評級
 function starsFor(accuracy) {
   if (accuracy >= 100) return 3;
   if (accuracy >= 70) return 2;
@@ -367,6 +524,33 @@ function fmtTime(ms) {
   const m = Math.floor(totalSec / 60);
   const s = Math.round(totalSec % 60);
   return m + " 分 " + s + " 秒";
+}
+
+// ---- PokeAPI ----
+const _pokeCache = new Map();
+
+async function fetchPokemonData(id) {
+  if (_pokeCache.has(id)) return _pokeCache.get(id);
+  const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}/`);
+  const species = await speciesRes.json();
+  const nameZh =
+    (species.names.find(n => n.language.name === "zh-hant") ||
+     species.names.find(n => n.language.name === "zh-hans") ||
+     species.names.find(n => n.language.name === "en") ||
+     {}).name || String(id);
+  const sprite = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+  const data = { id, nameZh, sprite };
+  _pokeCache.set(id, data);
+  return data;
+}
+
+async function fetchThreePokemon() {
+  const ids = [];
+  while (ids.length < 3) {
+    const id = randInt(1, 151);
+    if (!ids.includes(id)) ids.push(id);
+  }
+  return Promise.all(ids.map(fetchPokemonData));
 }
 
 // ---- 共用小元件 ----
@@ -386,7 +570,6 @@ function Stars({ value, size = 38, animate = false }) {
   );
 }
 
-// 厚實 3D 按鈕
 function Btn({ children, onClick, variant = "primary", size = "md", disabled, style }) {
   return (
     <button
@@ -404,19 +587,176 @@ Object.assign(window, {
   randInt, genQuestions, AVATARS,
   loadProfile, saveProfile, loadRecords, saveRecords, addRecord,
   rankRecords, starsFor, fmtTime,
+  loadPoints, savePoints, addPoints, loadPokedex, catchPokemon,
+  fetchPokemonData, fetchThreePokemon,
   Stars, Btn,
 });
 </script>
 
-<!-- ===== 三個畫面：首頁 / 作答 / 結果 ===== -->
+<!-- ===== 畫面元件 ===== -->
 <script type="text/babel" data-presets="react">
-// ===== 三個畫面：首頁 / 作答 / 結果 =====
 const { useState, useEffect, useRef } = React;
 
-// ---------- 首頁 ----------
-function StartScreen({ profile, setProfile, onStart, records }) {
+// ---- 點數徽章 ----
+function PointsBadge({ points }) {
+  const [pop, setPop] = useState(false);
+  const prev = useRef(points);
+  useEffect(() => {
+    if (points !== prev.current) {
+      setPop(true);
+      prev.current = points;
+      const t = setTimeout(() => setPop(false), 450);
+      return () => clearTimeout(t);
+    }
+  }, [points]);
+  return (
+    <div className={"points-badge" + (pop ? " pop" : "")}>
+      <span>🌟</span>
+      <span>{points} 點</span>
+    </div>
+  );
+}
+
+// ---- 圖鑑面板 ----
+function PokedexPanel({ pokedex }) {
+  const unique = [...new Map(pokedex.map(p => [p.id, p])).values()];
+  if (unique.length === 0) {
+    return (
+      <div className="pokedex-empty">
+        <div style={{ fontSize: "40px" }}>📖</div>
+        <p>還沒有寶可夢<br />累積 30 點就能兌換！</p>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div className="pokedex-meta">已收集 {unique.length} / 151 隻</div>
+      <div className="pokedex-grid">
+        {unique.map(p => (
+          <div key={p.id} className="poke-thumb" title={p.nameZh}>
+            <img src={p.sprite} alt={p.nameZh} />
+            <div className="poke-thumb-name">{p.nameZh}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- 兌換 Modal ----
+function PokemonRedeemModal({ onClose, onCatch }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [choices, setChoices] = useState([]);
+  const [selected, setSelected] = useState(null);   // index 0/1/2
+  const [phase, setPhase] = useState("choose");      // "choose" | "revealing" | "revealed"
+
+  useEffect(() => {
+    window.fetchThreePokemon()
+      .then(data => { setChoices(data); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, []);
+
+  function handleSelect(i) {
+    if (phase !== "choose") return;
+    setSelected(i);
+  }
+
+  function handleReveal() {
+    if (selected === null) return;
+    setPhase("revealing");
+    setTimeout(() => setPhase("revealed"), 100);
+  }
+
+  function handleCatch() {
+    onCatch(choices[selected]);
+  }
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={e => { if (e.target === e.currentTarget && phase === "choose") onClose(); }}
+    >
+      <div className="modal-box">
+        <div className="modal-title">🎴 猜猜我是誰？</div>
+        <div className="modal-sub">
+          {phase === "choose"
+            ? "選一個黑影，看看是哪隻寶可夢！"
+            : phase === "revealed"
+              ? `是 ${choices[selected]?.nameZh}！`
+              : "揭曉中..."}
+        </div>
+
+        {loading && (
+          <div style={{ textAlign: "center", padding: "36px", color: "var(--ink-soft)", fontWeight: 700, fontSize: "18px" }}>
+            載入寶可夢資料中...
+          </div>
+        )}
+        {error && (
+          <div style={{ textAlign: "center", padding: "24px", color: "var(--red)", fontWeight: 700 }}>
+            網路異常，請確認網路後再試
+            <br /><br />
+            <button className="ghost-btn" onClick={onClose}>關閉</button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            <div className="poke-choices">
+              {choices.map((p, i) => {
+                const isSelected = selected === i;
+                const isRevealed = phase === "revealed" && isSelected;
+                return (
+                  <button
+                    key={p.id}
+                    className={"poke-choice-btn" + (isSelected ? " selected" : "")}
+                    onClick={() => handleSelect(i)}
+                    disabled={phase !== "choose"}
+                  >
+                    <div className="poke-sprite-wrap">
+                      <img
+                        className={"poke-sprite" + (isRevealed ? " revealed" : "")}
+                        src={p.sprite}
+                        alt={isRevealed ? p.nameZh : "？"}
+                      />
+                    </div>
+                    <div className={"poke-choice-name" + (isRevealed ? " revealed" : "")}>
+                      {isRevealed ? p.nameZh : "？？？"}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="modal-footer">
+              {phase === "choose" && (
+                selected === null
+                  ? <span className="modal-hint">點選一個黑影✨</span>
+                  : <window.Btn variant="primary" size="md" onClick={handleReveal}>
+                      揭曉！✨
+                    </window.Btn>
+              )}
+              {(phase === "revealing") && (
+                <span className="modal-hint">揭曉中...</span>
+              )}
+              {phase === "revealed" && (
+                <window.Btn variant="go" size="md" onClick={handleCatch}>
+                  加進圖鑑！🎉
+                </window.Btn>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- 首頁 ----
+function StartScreen({ profile, setProfile, onStart, records, points, pokedex }) {
   const [editing, setEditing] = useState(false);
   const [count, setCount] = useState(10);
+  const [sideTab, setSideTab] = useState("lb");  // "lb" | "dex"
   const counts = [3, 5, 8, 10];
 
   const ranked = window.rankRecords(records);
@@ -429,6 +769,14 @@ function StartScreen({ profile, setProfile, onStart, records }) {
         <div>
           <h1 className="brand-title">減法闖關</h1>
           <p className="brand-sub">100 以內 · 算得快又準！</p>
+        </div>
+        <div className="brand-right">
+          <PointsBadge points={points} />
+          {points >= 30 && (
+            <div className="redeem-hint" style={{ fontSize: "12px", fontWeight: 700, color: "var(--gold-d)", textAlign: "right" }}>
+              可以兌換寶可夢啦！
+            </div>
+          )}
         </div>
       </header>
 
@@ -492,47 +840,62 @@ function StartScreen({ profile, setProfile, onStart, records }) {
         </section>
 
         <section className="panel side">
-          <h2 className="panel-h">🏆 排行榜</h2>
-          {ranked.length === 0 ? (
-            <div className="empty">
-              <div className="empty-emo">🎯</div>
-              <p>還沒有紀錄<br />快來成為第一名！</p>
-            </div>
-          ) : (
-            <ol className="leaderboard">
-              {ranked.slice(0, 5).map((r, i) => (
-                <li key={i} className={"lb-row " + (i === 0 ? "gold" : "")}>
-                  <span className="lb-rank">{i + 1}</span>
-                  <span className="lb-ava">{r.avatar}</span>
-                  <span className="lb-name">{r.name}</span>
-                  <span className="lb-score">{r.accuracy}%</span>
-                  <span className="lb-time">{(r.timeMs / 1000).toFixed(1)}s</span>
-                </li>
-              ))}
-            </ol>
+          <div className="panel-tabs">
+            <button
+              className={"panel-tab " + (sideTab === "lb" ? "active" : "")}
+              onClick={() => setSideTab("lb")}
+            >🏆 排行榜</button>
+            <button
+              className={"panel-tab " + (sideTab === "dex" ? "active" : "")}
+              onClick={() => setSideTab("dex")}
+            >📖 圖鑑</button>
+          </div>
+
+          {sideTab === "lb" && (
+            ranked.length === 0 ? (
+              <div className="empty">
+                <div className="empty-emo">🎯</div>
+                <p>還沒有紀錄<br />快來成為第一名！</p>
+              </div>
+            ) : (
+              <>
+                <ol className="leaderboard">
+                  {ranked.slice(0, 5).map((r, i) => (
+                    <li key={i} className={"lb-row " + (i === 0 ? "gold" : "")}>
+                      <span className="lb-rank">{i + 1}</span>
+                      <span className="lb-ava">{r.avatar}</span>
+                      <span className="lb-name">{r.name}</span>
+                      <span className="lb-score">{r.accuracy}%</span>
+                      <span className="lb-time">{(r.timeMs / 1000).toFixed(1)}s</span>
+                    </li>
+                  ))}
+                </ol>
+                {best && (
+                  <div className="best-card">
+                    <span className="best-label">個人最佳</span>
+                    <window.Stars value={window.starsFor(best.accuracy)} size={22} />
+                    <span className="best-detail">{best.correct}/{best.total} 題 · {(best.timeMs / 1000).toFixed(1)} 秒</span>
+                  </div>
+                )}
+              </>
+            )
           )}
-          {best && (
-            <div className="best-card">
-              <span className="best-label">個人最佳</span>
-              <window.Stars value={window.starsFor(best.accuracy)} size={22} />
-              <span className="best-detail">{best.correct}/{best.total} 題 · {(best.timeMs / 1000).toFixed(1)} 秒</span>
-            </div>
-          )}
+
+          {sideTab === "dex" && <PokedexPanel pokedex={pokedex} />}
         </section>
       </div>
     </div>
   );
 }
 
-// ---------- 作答 ----------
-function QuizScreen({ questions, profile, onFinish }) {
+// ---- 作答 ----
+function QuizScreen({ questions, profile, points, onFinish }) {
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState(() => questions.map(() => ""));
   const startRef = useRef(Date.now());
   const timerRef = useRef(null);
   const [bump, setBump] = useState(0);
 
-  // 計時器直接更新 DOM，避免每 100ms 重繪整個畫面（會打斷進場動畫）
   useEffect(() => {
     const t = setInterval(() => {
       if (timerRef.current) {
@@ -571,7 +934,6 @@ function QuizScreen({ questions, profile, onFinish }) {
   }
   function prev() { if (idx > 0) setIdx((i) => i - 1); }
 
-  // 實體鍵盤支援
   useEffect(() => {
     function onKey(e) {
       if (e.key >= "0" && e.key <= "9") press(Number(e.key));
@@ -597,6 +959,7 @@ function QuizScreen({ questions, profile, onFinish }) {
             />
           ))}
         </div>
+        <PointsBadge points={points} />
         <div className="timer">
           <span className="timer-ico">⏱</span>
           <span className="timer-val" ref={timerRef}>0.0s</span>
@@ -637,8 +1000,8 @@ function QuizScreen({ questions, profile, onFinish }) {
   );
 }
 
-// ---------- 結果 ----------
-function ResultScreen({ questions, answers, timeMs, profile, records, onReplay, onNew, onHome }) {
+// ---- 結果 ----
+function ResultScreen({ questions, answers, timeMs, profile, records, points, earnedThisRound, hasSpeedBonus, onRedeem, onReplay, onNew, onHome }) {
   const graded = questions.map((q, i) => ({
     ...q, given: answers[i], ok: String(q.answer) === String(answers[i]),
   }));
@@ -657,6 +1020,8 @@ function ResultScreen({ questions, answers, timeMs, profile, records, onReplay, 
     accuracy >= 70 ? "很棒喔！再加把勁就滿分 💪" :
     "完成挑戰！多練幾次會更快更準 🌱";
 
+  const canRedeem = points >= 30;
+
   return (
     <div className="screen result">
       <Confetti active={stars >= 2} />
@@ -664,6 +1029,14 @@ function ResultScreen({ questions, answers, timeMs, profile, records, onReplay, 
         <window.Stars value={stars} size={56} animate />
         <h1 className="result-title">{praise}</h1>
         {isBest && <div className="best-flag">🏆 新的個人最佳！</div>}
+        <div className="points-earned-row">
+          <div className="points-earned-tag">
+            <span>🌟</span>
+            <span>+{earnedThisRound} 點</span>
+            {hasSpeedBonus && <span className="speed-bonus-tag">⚡ 速度加成！</span>}
+          </div>
+          <span className="points-total-note">累計 {points} 點</span>
+        </div>
       </div>
 
       <div className="result-grid">
@@ -722,6 +1095,13 @@ function ResultScreen({ questions, answers, timeMs, profile, records, onReplay, 
         <button className="ghost-btn" onClick={onHome}>🏠 回首頁</button>
         <window.Btn variant="secondary" size="lg" onClick={onNew}>🔄 換新題目</window.Btn>
         <window.Btn variant="go" size="lg" onClick={onReplay}>再玩一次 ▶</window.Btn>
+        {canRedeem && (
+          <div className="redeem-cta">
+            <window.Btn variant="gold" size="lg" onClick={onRedeem}>
+              🎁 兌換寶可夢！（{points} 點）
+            </window.Btn>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -750,22 +1130,26 @@ function Confetti({ active }) {
   );
 }
 
-Object.assign(window, { StartScreen, QuizScreen, ResultScreen, Confetti });
+Object.assign(window, { StartScreen, QuizScreen, ResultScreen, Confetti, PointsBadge, PokedexPanel, PokemonRedeemModal });
 </script>
 
-<!-- ===== 主控制：畫面切換 + 狀態 ===== -->
+<!-- ===== 主控制 ===== -->
 <script type="text/babel" data-presets="react">
-// ===== 主控制：畫面切換 + 狀態 =====
 const { useState: useStateApp } = React;
 
 function App() {
-  const [screen, setScreen] = useStateApp("start");
-  const [profile, setProfileState] = useStateApp(() => window.loadProfile());
-  const [count, setCount] = useStateApp(10);
-  const [questions, setQuestions] = useStateApp([]);
-  const [answers, setAnswers] = useStateApp([]);
-  const [timeMs, setTimeMs] = useStateApp(0);
-  const [records, setRecords] = useStateApp(() => window.loadRecords());
+  const [screen, setScreen]             = useStateApp("start");
+  const [profile, setProfileState]      = useStateApp(() => window.loadProfile());
+  const [count, setCount]               = useStateApp(10);
+  const [questions, setQuestions]       = useStateApp([]);
+  const [answers, setAnswers]           = useStateApp([]);
+  const [timeMs, setTimeMs]             = useStateApp(0);
+  const [records, setRecords]           = useStateApp(() => window.loadRecords());
+  const [points, setPoints]             = useStateApp(() => window.loadPoints());
+  const [pokedex, setPokedex]           = useStateApp(() => window.loadPokedex());
+  const [showRedeem, setShowRedeem]     = useStateApp(false);
+  const [earnedThisRound, setEarned]    = useStateApp(0);
+  const [hasSpeedBonus, setSpeedBonus]  = useStateApp(false);
 
   function setProfile(p) {
     setProfileState(p);
@@ -779,12 +1163,23 @@ function App() {
   }
 
   function finish(ans, ms) {
-    setAnswers(ans);
-    setTimeMs(ms);
     const correct = questions.reduce(
       (n, q, i) => n + (String(q.answer) === String(ans[i]) ? 1 : 0), 0
     );
     const total = questions.length;
+
+    // 速度加成：平均每題 < 20 秒，再加 correct 點
+    const avgSec = ms / 1000 / total;
+    const bonusPoints = avgSec < 20 ? correct : 0;
+    const earned = correct + bonusPoints;
+
+    const newTotal = window.addPoints(earned);
+    setPoints(newTotal);
+    setEarned(earned);
+    setSpeedBonus(bonusPoints > 0);
+
+    setAnswers(ans);
+    setTimeMs(ms);
     const rec = {
       _id: Date.now() + "-" + Math.random().toString(36).slice(2, 6),
       name: profile.name,
@@ -799,15 +1194,17 @@ function App() {
     setScreen("result");
   }
 
+  function handleCatch(poke) {
+    const newTotal = window.addPoints(-30);
+    setPoints(newTotal);
+    const newDex = window.catchPokemon(poke);
+    setPokedex(newDex);
+    setShowRedeem(false);
+  }
+
   function replay() {
     setQuestions(window.genQuestions(count));
     setScreen("quiz");
-  }
-  function newQuiz() {
-    setScreen("start");
-  }
-  function home() {
-    setScreen("start");
   }
 
   return (
@@ -828,12 +1225,15 @@ function App() {
             setProfile={setProfile}
             onStart={start}
             records={records}
+            points={points}
+            pokedex={pokedex}
           />
         )}
         {screen === "quiz" && (
           <window.QuizScreen
             questions={questions}
             profile={profile}
+            points={points}
             onFinish={finish}
           />
         )}
@@ -844,12 +1244,23 @@ function App() {
             timeMs={timeMs}
             profile={profile}
             records={records}
+            points={points}
+            earnedThisRound={earnedThisRound}
+            hasSpeedBonus={hasSpeedBonus}
+            onRedeem={() => setShowRedeem(true)}
             onReplay={replay}
-            onNew={newQuiz}
-            onHome={home}
+            onNew={() => setScreen("start")}
+            onHome={() => setScreen("start")}
           />
         )}
       </div>
+
+      {showRedeem && (
+        <window.PokemonRedeemModal
+          onClose={() => setShowRedeem(false)}
+          onCatch={handleCatch}
+        />
+      )}
     </div>
   );
 }
@@ -858,7 +1269,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 </script>
 
 <script>
-// 註冊 Service Worker，支援離線使用
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
