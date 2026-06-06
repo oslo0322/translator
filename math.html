@@ -624,7 +624,7 @@ function PokedexPanel({ pokedex }) {
     return (
       <div className="pokedex-empty">
         <div style={{ fontSize: "40px" }}>📖</div>
-        <p>還沒有寶可夢<br />累積 30 點就能兌換！</p>
+        <p>還沒有寶可夢<br />累積 5 點就能兌換！</p>
       </div>
     );
   }
@@ -772,7 +772,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex })
         </div>
         <div className="brand-right">
           <PointsBadge points={points} />
-          {points >= 30 && (
+          {points >= 5 && (
             <div className="redeem-hint" style={{ fontSize: "12px", fontWeight: 700, color: "var(--gold-d)", textAlign: "right" }}>
               可以兌換寶可夢啦！
             </div>
@@ -932,7 +932,6 @@ function QuizScreen({ questions, profile, points, onFinish }) {
       setIdx((i) => i + 1);
     }
   }
-  function prev() { if (idx > 0) setIdx((i) => i - 1); }
 
   useEffect(() => {
     function onKey(e) {
@@ -991,7 +990,6 @@ function QuizScreen({ questions, profile, points, onFinish }) {
       </div>
 
       <div className="quiz-foot">
-        <button className="ghost-btn" onClick={prev} disabled={idx === 0}>← 上一題</button>
         <window.Btn variant={isLast ? "go" : "primary"} size="lg" onClick={next} disabled={cur === ""}>
           {isLast ? "完成！看結果 🎉" : "下一題 →"}
         </window.Btn>
@@ -1020,7 +1018,7 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
     accuracy >= 70 ? "很棒喔！再加把勁就滿分 💪" :
     "完成挑戰！多練幾次會更快更準 🌱";
 
-  const canRedeem = points >= 30;
+  const canRedeem = points >= 5;
 
   return (
     <div className="screen result">
@@ -1195,7 +1193,7 @@ function App() {
   }
 
   function handleCatch(poke) {
-    const newTotal = window.addPoints(-30);
+    const newTotal = window.addPoints(-5);
     setPoints(newTotal);
     const newDex = window.catchPokemon(poke);
     setPokedex(newDex);
