@@ -1082,7 +1082,6 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
   const correct = graded.filter((g) => g.ok).length;
   const total = questions.length;
   const accuracy = Math.round((correct / total) * 100);
-  const stars = window.starsFor(accuracy);
   const wrong = graded.filter((g) => !g.ok);
 
   const ranked = window.rankRecords(records);
@@ -1090,16 +1089,15 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
   const isBest = myRank === 1;
 
   const praise =
-    stars === 3 ? "太厲害了！全部答對 ⭐⭐⭐" :
+    accuracy === 100 ? "太厲害了！全部答對！🎉" :
     accuracy >= 70 ? "很棒喔！再加把勁就滿分 💪" :
     "完成挑戰！多練幾次會更快更準 🌱";
 
   return (
     <div className="screen result">
       <PokeCallout points={points} onRedeem={onRedeem} />
-      <Confetti active={stars >= 2} />
+      <Confetti active={accuracy >= 70} />
       <div className="result-head">
-        <window.Stars value={stars} size={56} animate />
         <h1 className="result-title">{praise}</h1>
         {isBest && <div className="best-flag">🏆 新的個人最佳！</div>}
         <div className="points-earned-row">
