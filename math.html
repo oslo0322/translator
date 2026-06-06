@@ -1094,10 +1094,9 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
     accuracy >= 70 ? "很棒喔！再加把勁就滿分 💪" :
     "完成挑戰！多練幾次會更快更準 🌱";
 
-  const canRedeem = points >= 5;
-
   return (
     <div className="screen result">
+      <PokeCallout points={points} onRedeem={onRedeem} />
       <Confetti active={stars >= 2} />
       <div className="result-head">
         <window.Stars value={stars} size={56} animate />
@@ -1169,13 +1168,6 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
         <button className="ghost-btn" onClick={onHome}>🏠 回首頁</button>
         <window.Btn variant="secondary" size="lg" onClick={onNew}>🔄 換新題目</window.Btn>
         <window.Btn variant="go" size="lg" onClick={onReplay}>再玩一次 ▶</window.Btn>
-        {canRedeem && (
-          <div className="redeem-cta">
-            <window.Btn variant="gold" size="lg" onClick={onRedeem}>
-              🎁 兌換寶可夢！（{points} 點）
-            </window.Btn>
-          </div>
-        )}
       </div>
     </div>
   );
