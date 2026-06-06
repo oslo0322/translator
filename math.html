@@ -352,6 +352,50 @@ body{
 }
 @keyframes redeemPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 
+/* ===== 首頁頂部兌換橫幅 ===== */
+.poke-callout{
+  width:100%;border-radius:22px;padding:18px 20px;
+  display:flex;align-items:center;gap:14px;
+  border:none;text-align:left;box-sizing:border-box;
+  margin-bottom:4px;
+}
+.poke-callout.can-redeem{
+  background:linear-gradient(130deg,oklch(0.85 0.19 80),oklch(0.74 0.18 58));
+  box-shadow:0 6px 0 oklch(0.66 0.15 60),0 10px 28px oklch(0.65 0.16 65 / .45);
+  cursor:pointer;
+  animation:calloutPop 1.5s ease-in-out infinite;
+}
+.poke-callout.can-redeem:active{transform:scale(.97);}
+.poke-callout.not-yet{
+  background:oklch(0.97 0.05 85);
+  border:2px solid oklch(0.88 0.09 85);
+  box-shadow:0 4px 14px oklch(0.7 0.10 85 / .18);
+  cursor:default;
+}
+@keyframes calloutPop{
+  0%,100%{transform:scale(1);box-shadow:0 6px 0 oklch(0.66 0.15 60),0 10px 28px oklch(0.65 0.16 65 / .45);}
+  50%{transform:scale(1.025);box-shadow:0 8px 0 oklch(0.66 0.15 60),0 16px 36px oklch(0.65 0.16 65 / .60),0 0 32px oklch(0.82 0.20 82 / .55);}
+}
+.poke-callout-icon{font-size:46px;line-height:1;flex-shrink:0;filter:drop-shadow(0 3px 6px oklch(0.5 0.2 60 / .4));}
+.poke-callout-text{flex:1;min-width:0;}
+.poke-callout-main{font-size:24px;font-weight:900;color:oklch(0.25 0.07 60);line-height:1.15;}
+.poke-callout.not-yet .poke-callout-main{font-size:18px;color:oklch(0.45 0.09 70);}
+.poke-callout-sub{font-size:14px;font-weight:700;color:oklch(0.40 0.08 65);margin-top:3px;}
+.poke-callout.not-yet .poke-callout-sub{color:oklch(0.55 0.07 70);}
+.poke-callout-arrow{font-size:30px;font-weight:900;color:oklch(0.35 0.10 60);flex-shrink:0;}
+.poke-callout-prog{display:flex;gap:5px;flex-shrink:0;}
+.poke-callout-dot{width:18px;height:18px;border-radius:50%;background:oklch(0.88 0.09 85);border:2px solid oklch(0.80 0.10 80);}
+.poke-callout-dot.filled{background:var(--gold);border-color:var(--gold-d);box-shadow:0 2px 6px oklch(0.7 0.15 70/.5);}
+@media(max-width:880px){
+  .poke-callout{padding:14px 16px;gap:10px;border-radius:18px;}
+  .poke-callout-icon{font-size:38px;}
+  .poke-callout-main{font-size:20px;}
+  .poke-callout.not-yet .poke-callout-main{font-size:15px;}
+  .poke-callout-sub{font-size:12px;}
+  .poke-callout-arrow{font-size:24px;}
+  .poke-callout-dot{width:15px;height:15px;}
+}
+
 /* ===== 手機 / 直向 ===== */
 @media (max-width:880px){
   html,body{height:auto;overflow-x:hidden;overflow-y:auto;}
@@ -753,7 +797,38 @@ function PokemonRedeemModal({ onClose, onCatch }) {
 }
 
 // ---- 首頁 ----
-function StartScreen({ profile, setProfile, onStart, records, points, pokedex }) {
+function PokeCallout({ points, onRedeem }) {
+  const canRedeem = points >= 5;
+  const need = Math.max(0, 5 - points);
+  if (canRedeem) {
+    return (
+      <button className="poke-callout can-redeem" onClick={onRedeem}>
+        <span className="poke-callout-icon">🎁</span>
+        <div className="poke-callout-text">
+          <div className="poke-callout-main">可以換寶可夢了！</div>
+          <div className="poke-callout-sub">目前 {points} 點・點我馬上換！</div>
+        </div>
+        <span className="poke-callout-arrow">▶</span>
+      </button>
+    );
+  }
+  return (
+    <div className="poke-callout not-yet">
+      <span className="poke-callout-icon">⭐</span>
+      <div className="poke-callout-text">
+        <div className="poke-callout-main">累積點數換寶可夢！</div>
+        <div className="poke-callout-sub">目前 {points} 點・還差 {need} 點就能換！</div>
+      </div>
+      <div className="poke-callout-prog">
+        {Array.from({length: 5}).map((_, i) => (
+          <span key={i} className={"poke-callout-dot" + (i < points ? " filled" : "")} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function StartScreen({ profile, setProfile, onStart, records, points, pokedex, onRedeem }) {
   const [editing, setEditing] = useState(false);
   const [count, setCount] = useState(10);
   const [sideTab, setSideTab] = useState("lb");  // "lb" | "dex"
@@ -764,6 +839,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex })
 
   return (
     <div className="screen start">
+      <PokeCallout points={points} onRedeem={onRedeem} />
       <header className="brand">
         <div className="brand-mascot">🦊</div>
         <div>
@@ -1128,7 +1204,7 @@ function Confetti({ active }) {
   );
 }
 
-Object.assign(window, { StartScreen, QuizScreen, ResultScreen, Confetti, PointsBadge, PokedexPanel, PokemonRedeemModal });
+Object.assign(window, { StartScreen, QuizScreen, ResultScreen, Confetti, PointsBadge, PokedexPanel, PokemonRedeemModal, PokeCallout });
 </script>
 
 <!-- ===== 主控制 ===== -->
@@ -1225,6 +1301,7 @@ function App() {
             records={records}
             points={points}
             pokedex={pokedex}
+            onRedeem={() => setShowRedeem(true)}
           />
         )}
         {screen === "quiz" && (
