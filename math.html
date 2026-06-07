@@ -938,7 +938,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
                     <button
                       key={p.id}
                       className={"avatar-opt " + (profile.avatar === p.sprite ? "sel" : "")}
-                      onClick={() => setProfile({ ...profile, avatar: p.sprite })}
+                      onPointerDown={() => setProfile({ ...profile, avatar: p.sprite })}
                       title={p.nameZh}
                     >
                       <img src={p.sprite} alt={p.nameZh} />
