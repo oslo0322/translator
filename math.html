@@ -148,10 +148,12 @@ body{
 .pencil{font-size:16px;color:var(--violet);}
 .name-input{font-family:var(--font-ui);font-size:24px;font-weight:900;color:var(--ink);border:none;border-bottom:3px solid var(--violet);background:transparent;width:160px;outline:none;}
 
-.avatar-picker{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:18px;}
-.avatar-opt{font-size:26px;background:var(--surface-2);border:2px solid var(--line);border-radius:12px;padding:8px 0;cursor:pointer;transition:.12s;}
+.avatar-picker{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.avatar-opt{width:54px;height:54px;background:var(--surface-2);border:2px solid var(--line);border-radius:12px;cursor:pointer;transition:.12s;display:flex;align-items:center;justify-content:center;padding:0;}
+.avatar-opt img{width:42px;height:42px;image-rendering:pixelated;display:block;}
 .avatar-opt:hover{transform:scale(1.12);}
 .avatar-opt.sel{border-color:var(--coral);background:oklch(0.96 0.04 32);}
+.avatar-empty{font-size:13px;color:var(--ink-soft);padding:6px 0;}
 
 .side{min-height:0;}
 .empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--ink-soft);text-align:center;gap:10px;}
@@ -172,7 +174,7 @@ body{
 .lb-row.gold{background:oklch(0.95 0.06 85);box-shadow:inset 0 0 0 2px var(--gold);}
 .lb-row.me{box-shadow:inset 0 0 0 2px var(--violet);}
 .lb-rank{font-family:var(--font-num);font-weight:700;color:var(--ink-soft);text-align:center;}
-.lb-ava{font-size:22px;text-align:center;}
+.lb-ava{font-size:22px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .lb-name{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lb-score{font-family:var(--font-num);font-weight:700;color:var(--green-d);}
 .lb-time{font-family:var(--font-num);color:var(--ink-soft);font-size:14px;}
@@ -201,7 +203,7 @@ body{
 .quiz{gap:16px;}
 .quiz-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .player-pill{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:999px;padding:7px 16px 7px 8px;box-shadow:0 4px 12px rgba(0,0,0,.08);font-weight:900;white-space:nowrap;}
-.pp-ava{font-size:24px;}
+.pp-ava{font-size:24px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;overflow:hidden;}
 .dots{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;flex:1;}
 .dot{width:14px;height:14px;border-radius:50%;background:var(--line);transition:.2s;}
 .dot.done{background:var(--green);}
@@ -643,6 +645,15 @@ Object.assign(window, {
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useRef } = React;
 
+// Renders either a Pokémon sprite (URL) or an emoji string as an avatar
+function AvaDisplay({ av, size }) {
+  const s = size || 28;
+  if (av && av.startsWith('http')) {
+    return <img src={av} alt="" style={{width:s,height:s,imageRendering:'pixelated',display:'block'}} />;
+  }
+  return <span>{av || '🦊'}</span>;
+}
+
 // ---- 點數徽章 ----
 function PointsBadge({ points }) {
   const [pop, setPop] = useState(false);
@@ -897,7 +908,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
 
           <div className="profile-row">
             <button className="avatar-btn" onClick={() => setEditing((v) => !v)}>
-              <span className="avatar-emoji">{profile.avatar}</span>
+              <AvaDisplay av={profile.avatar} size={42} />
             </button>
             <div className="profile-meta">
               <span className="profile-label">玩家</span>
@@ -921,15 +932,19 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
 
           {editing && (
             <div className="avatar-picker">
-              {window.AVATARS.map((a) => (
-                <button
-                  key={a}
-                  className={"avatar-opt " + (profile.avatar === a ? "sel" : "")}
-                  onClick={() => setProfile({ ...profile, avatar: a })}
-                >
-                  {a}
-                </button>
-              ))}
+              {pokedex.length === 0
+                ? <p className="avatar-empty">先答題收集寶可夢，才能選頭像！🎯</p>
+                : pokedex.map((p) => (
+                    <button
+                      key={p.id}
+                      className={"avatar-opt " + (profile.avatar === p.sprite ? "sel" : "")}
+                      onClick={() => setProfile({ ...profile, avatar: p.sprite })}
+                      title={p.nameZh}
+                    >
+                      <img src={p.sprite} alt={p.nameZh} />
+                    </button>
+                  ))
+              }
             </div>
           )}
 
@@ -962,7 +977,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
                   {ranked.slice(0, 5).map((r, i) => (
                     <li key={i} className={"lb-row " + (i === 0 ? "gold" : "")}>
                       <span className="lb-rank">{i + 1}</span>
-                      <span className="lb-ava">{r.avatar}</span>
+                      <span className="lb-ava"><AvaDisplay av={r.avatar} size={24} /></span>
                       <span className="lb-name">{r.name}</span>
                       <span className="lb-score">{r.accuracy}%</span>
                       <span className="lb-time">{(r.timeMs / 1000).toFixed(1)}s</span>
@@ -1046,7 +1061,7 @@ function QuizScreen({ questions, profile, points, onFinish }) {
     <div className="screen quiz">
       <div className="quiz-top">
         <div className="player-pill">
-          <span className="pp-ava">{profile.avatar}</span>
+          <span className="pp-ava"><AvaDisplay av={profile.avatar} size={28} /></span>
           <span className="pp-name">{profile.name}</span>
         </div>
         <div className="dots">
@@ -1175,7 +1190,7 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
             {ranked.slice(0, 5).map((r, i) => (
               <li key={i} className={"lb-row " + (i === 0 ? "gold " : "") + (r._id === records[records.length - 1]?._id ? "me" : "")}>
                 <span className="lb-rank">{i + 1}</span>
-                <span className="lb-ava">{r.avatar}</span>
+                <span className="lb-ava"><AvaDisplay av={r.avatar} size={24} /></span>
                 <span className="lb-name">{r.name}</span>
                 <span className="lb-score">{r.accuracy}%</span>
                 <span className="lb-time">{(r.timeMs / 1000).toFixed(1)}s</span>
