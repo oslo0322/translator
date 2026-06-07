@@ -836,10 +836,11 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
   const [sideTab, setSideTab] = useState("lb");  // "lb" | "dex"
   const counts = [3, 5, 8, 10];
   const [mascot, setMascot] = useState(null);
+  const [mascotErr, setMascotErr] = useState(false);
   useEffect(() => {
     if (pokedex.length > 0) {
       const pick = pokedex[Math.floor(Math.random() * pokedex.length)];
-      setMascot({ ...pick, mystery: false });
+      setMascot({ id: pick.id, nameZh: pick.nameZh || '寶可夢', sprite: pick.sprite || null, mystery: false });
     } else {
       const id = window.randInt(1, 151);
       setMascot({ sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`, nameZh: '？？？', mystery: true });
@@ -855,7 +856,13 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
       <header className="brand">
         <div className="brand-mascot">
           {mascot
-            ? <><img src={mascot.sprite} alt={mascot.nameZh} className="mascot-sprite" style={mascot.mystery ? {filter:'brightness(0) opacity(0.55)'} : {}} /><span className="mascot-name">{mascot.nameZh}</span></>
+            ? (mascot.sprite && !mascotErr
+                ? <><img src={mascot.sprite} alt={mascot.nameZh} className="mascot-sprite"
+                      style={mascot.mystery ? {filter:'brightness(0) opacity(0.55)'} : {}}
+                      onError={() => setMascotErr(true)} />
+                    <span className="mascot-name">{mascot.nameZh}</span></>
+                : <><span style={{fontSize:'48px',lineHeight:1}}>{mascot.mystery ? '❓' : '⭐'}</span>
+                    <span className="mascot-name">{mascot.nameZh}</span></>)
             : <span>🦊</span>}
         </div>
         <div>
