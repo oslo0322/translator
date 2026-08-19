@@ -6,10 +6,10 @@
 <meta name="theme-color" content="#fdf6e3" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="減法闖關" />
+<meta name="apple-mobile-web-app-title" content="數學闖關" />
 <link rel="manifest" href="./math.webmanifest" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🦊</text></svg>" />
-<title>減法闖關</title>
+<title>數學闖關</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet" />
@@ -96,6 +96,15 @@ body{
 .ghost-btn:disabled{opacity:.4;cursor:not-allowed;}
 
 .panel-h{font-size:22px;font-weight:900;margin-bottom:16px;}
+
+.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.mode-btn{
+  border:3px solid var(--line);background:var(--surface-2);color:var(--ink-soft);
+  border-radius:18px;padding:13px 10px;font-family:var(--font-ui);font-size:18px;
+  font-weight:900;cursor:pointer;transition:all .14s;
+}
+.mode-btn:hover{transform:translateY(-2px);border-color:var(--violet);}
+.mode-btn.active{border-color:var(--violet);background:oklch(0.96 0.025 285);color:var(--violet-d);box-shadow:0 4px 0 oklch(0.82 0.07 285);}
 
 /* ===== 星星 ===== */
 .stars{display:flex;gap:8px;justify-content:center;}
@@ -466,8 +475,19 @@ function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function genQuestions(count) {
+function genQuestions(count, mode = "subtraction") {
   const qs = [];
+  if (mode === "multiplication") {
+    const table = [];
+    for (let a = 1; a <= 9; a++) {
+      for (let b = 1; b <= 9; b++) table.push({ a, b, answer: a * b, key: a + "x" + b });
+    }
+    for (let i = table.length - 1; i > 0; i--) {
+      const j = randInt(0, i);
+      [table[i], table[j]] = [table[j], table[i]];
+    }
+    return table.slice(0, count);
+  }
   let guard = 0;
   while (qs.length < count && guard < count * 40) {
     guard++;
@@ -844,6 +864,7 @@ function PokeCallout({ points, onRedeem }) {
 function StartScreen({ profile, setProfile, onStart, records, points, pokedex, onRedeem }) {
   const [editing, setEditing] = useState(false);
   const [count, setCount] = useState(10);
+  const [mode, setMode] = useState("subtraction");
   const [sideTab, setSideTab] = useState("lb");  // "lb" | "dex"
   const counts = [3, 5, 8, 10];
   const [mascot, setMascot] = useState(null);
@@ -858,7 +879,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
     }
   }, []);
 
-  const ranked = window.rankRecords(records);
+  const ranked = window.rankRecords(records.filter(r => (r.mode || "subtraction") === mode));
   const best = ranked[0];
 
   return (
@@ -877,8 +898,8 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
             : <span>🦊</span>}
         </div>
         <div>
-          <h1 className="brand-title">減法闖關</h1>
-          <p className="brand-sub">100 以內 · 算得快又準！</p>
+          <h1 className="brand-title">數學闖關</h1>
+          <p className="brand-sub">{mode === "multiplication" ? "九九乘法 · 熟練每一組！" : "100 以內減法 · 算得快又準！"}</p>
         </div>
         <div className="brand-right">
           <PointsBadge points={points} />
@@ -892,6 +913,11 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
 
       <div className="start-grid">
         <section className="panel choose">
+          <h2 className="panel-h">選擇測驗</h2>
+          <div className="mode-switch">
+            <button className={"mode-btn " + (mode === "subtraction" ? "active" : "")} onClick={() => setMode("subtraction")}>➖ 減法</button>
+            <button className={"mode-btn " + (mode === "multiplication" ? "active" : "")} onClick={() => setMode("multiplication")}>✖️ 九九乘法</button>
+          </div>
           <h2 className="panel-h">這次要挑戰幾題？</h2>
           <div className="chips">
             {counts.map((c) => (
@@ -948,7 +974,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
             </div>
           )}
 
-          <window.Btn variant="primary" size="xl" onClick={() => onStart(count)} style={{ marginTop: "auto" }}>
+          <window.Btn variant="primary" size="xl" onClick={() => onStart(count, mode)} style={{ marginTop: "auto" }}>
             開始挑戰　▶
           </window.Btn>
         </section>
@@ -1003,7 +1029,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
 }
 
 // ---- 作答 ----
-function QuizScreen({ questions, profile, points, onFinish }) {
+function QuizScreen({ questions, mode, profile, points, onFinish }) {
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState(() => questions.map(() => ""));
   const startRef = useRef(Date.now());
@@ -1084,7 +1110,7 @@ function QuizScreen({ questions, profile, points, onFinish }) {
           <div className="q-counter">第 {idx + 1} 題 / 共 {questions.length} 題</div>
           <div className="q-equation" key={idx}>
             <span className="num">{q.a}</span>
-            <span className="op">−</span>
+            <span className="op">{mode === "multiplication" ? "×" : "−"}</span>
             <span className="num">{q.b}</span>
             <span className="op">=</span>
             <span className={"answer-box " + (cur ? "filled" : "")} key={bump}>
@@ -1113,7 +1139,7 @@ function QuizScreen({ questions, profile, points, onFinish }) {
 }
 
 // ---- 結果 ----
-function ResultScreen({ questions, answers, timeMs, profile, records, points, earnedThisRound, hasSpeedBonus, onRedeem, onReplay, onNew, onHome }) {
+function ResultScreen({ questions, mode, answers, timeMs, profile, records, points, earnedThisRound, hasSpeedBonus, onRedeem, onReplay, onNew, onHome }) {
   const graded = questions.map((q, i) => ({
     ...q, given: answers[i], ok: String(q.answer) === String(answers[i]),
   }));
@@ -1122,7 +1148,7 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
   const accuracy = Math.round((correct / total) * 100);
   const wrong = graded.filter((g) => !g.ok);
 
-  const ranked = window.rankRecords(records);
+  const ranked = window.rankRecords(records.filter(r => (r.mode || "subtraction") === mode));
   const myRank = ranked.findIndex((r) => r._id === records[records.length - 1]?._id) + 1;
   const isBest = myRank === 1;
 
@@ -1175,7 +1201,7 @@ function ResultScreen({ questions, answers, timeMs, profile, records, points, ea
             <ul className="wrong-list">
               {wrong.map((g, i) => (
                 <li key={i} className="wrong-item">
-                  <span className="wq">{g.a} − {g.b} =</span>
+                  <span className="wq">{g.a} {mode === "multiplication" ? "×" : "−"} {g.b} =</span>
                   <span className="wgiven">你寫 {g.given}</span>
                   <span className="wright">正解 {g.answer}</span>
                 </li>
@@ -1243,6 +1269,7 @@ function App() {
   const [screen, setScreen]             = useStateApp("start");
   const [profile, setProfileState]      = useStateApp(() => window.loadProfile());
   const [count, setCount]               = useStateApp(10);
+  const [mode, setMode]                 = useStateApp("subtraction");
   const [questions, setQuestions]       = useStateApp([]);
   const [answers, setAnswers]           = useStateApp([]);
   const [timeMs, setTimeMs]             = useStateApp(0);
@@ -1258,9 +1285,10 @@ function App() {
     window.saveProfile(p);
   }
 
-  function start(c) {
+  function start(c, selectedMode) {
     setCount(c);
-    setQuestions(window.genQuestions(c));
+    setMode(selectedMode);
+    setQuestions(window.genQuestions(c, selectedMode));
     setScreen("quiz");
   }
 
@@ -1290,6 +1318,7 @@ function App() {
       total,
       accuracy: Math.round((correct / total) * 100),
       timeMs: ms,
+      mode,
       date: Date.now(),
     };
     setRecords(window.addRecord(rec));
@@ -1305,7 +1334,7 @@ function App() {
   }
 
   function replay() {
-    setQuestions(window.genQuestions(count));
+    setQuestions(window.genQuestions(count, mode));
     setScreen("quiz");
   }
 
@@ -1335,6 +1364,7 @@ function App() {
         {screen === "quiz" && (
           <window.QuizScreen
             questions={questions}
+            mode={mode}
             profile={profile}
             points={points}
             onFinish={finish}
@@ -1343,6 +1373,7 @@ function App() {
         {screen === "result" && (
           <window.ResultScreen
             questions={questions}
+            mode={mode}
             answers={answers}
             timeMs={timeMs}
             profile={profile}

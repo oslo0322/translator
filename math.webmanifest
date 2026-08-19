@@ -1,7 +1,7 @@
 {
-  "name": "減法闖關",
-  "short_name": "減法闖關",
-  "description": "100 以內減法練習闖關遊戲",
+  "name": "數學闖關",
+  "short_name": "數學闖關",
+  "description": "100 以內減法與九九乘法練習闖關遊戲",
   "start_url": "./math.html",
   "display": "standalone",
   "background_color": "#fdf6e3",
