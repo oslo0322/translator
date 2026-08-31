@@ -525,9 +525,14 @@ function statusOf(s) {
   if (s.peace >= PEACE_LIMIT) return { draw: true, reason: 'peace' };
   const c = s.colorOf[s.current];
   if (!c) return null;
-  let alive = 0;
-  for (let i = 0; i < N; i++) { const p = s.board[i]; if (p && p.color === c) alive++; }
-  if (alive === 0) return { winner: 1 - s.current, reason: 'clear' };
+  let mine = 0, foes = 0;
+  for (let i = 0; i < N; i++) {
+    const p = s.board[i];
+    if (!p) continue;
+    if (p.color === c) mine++; else foes++;
+  }
+  if (mine === 0 && foes === 0) return { draw: true, reason: 'wipeout' };
+  if (mine === 0) return { winner: 1 - s.current, reason: 'clear' };
   if (legalActions(s).length === 0) return { winner: 1 - s.current, reason: 'stuck' };
   return null;
 }
@@ -736,6 +741,12 @@ function setCell(cell, p) {
   if (!p) { if (el) el.remove(); return; }
   if (el && el.dataset.pid !== String(p.id)) { el.remove(); el = null; }
   if (!el) { cell.appendChild(makePiece(p)); return; }
+  if (!p.revealed && el.classList.contains('revealed')) {
+    // 悔棋退回暗子：整顆換掉，免得殘留字面洩漏身分
+    el.remove();
+    cell.appendChild(makePiece(p));
+    return;
+  }
   if (p.revealed && !el.classList.contains('revealed')) {
     el.dataset.color = p.color;
     el.querySelector('.front').textContent = GLYPH[p.type][p.color];
@@ -882,20 +893,22 @@ function afterAction() {
   const st = statusOf(state);
   if (st) { endGame(st); return; }
   render();
-  if (state.mode === 'ai' && state.current === AI) {
-    busy = true;
-    undoBtn.disabled = true;
-    const g = gen;
-    setTimeout(() => {
-      if (g !== gen) return;              // 期間開了新局或悔棋，這次思考作廢
-      busy = false;
-      if (state.over || state.current !== AI) { render(); return; }
-      const a = aiChoose(state);
-      if (!a) { const s2 = statusOf(state); if (s2) endGame(s2); return; }
-      if (a.kind === 'flip') doFlip(a.i);
-      else doMove(a.from, a.to);
-    }, 420);
-  }
+  if (state.mode === 'ai' && state.current === AI) scheduleAI();
+}
+
+function scheduleAI() {
+  busy = true;
+  undoBtn.disabled = true;
+  const g = gen;
+  setTimeout(() => {
+    if (g !== gen) return;              // 期間開了新局或悔棋，這次思考作廢
+    busy = false;
+    if (state.over || state.current !== AI) { render(); return; }
+    const a = aiChoose(state);
+    if (!a) { const s2 = statusOf(state); if (s2) endGame(s2); return; }
+    if (a.kind === 'flip') doFlip(a.i);
+    else doMove(a.from, a.to);
+  }, 420);
 }
 
 function onCellClick(i) {
@@ -935,6 +948,8 @@ function undo() {
   hide(resultModal);
   render();
   save();
+  // 退不回自己的回合（例如重整後只剩一步可退）時，讓電腦重新思考，不要卡死
+  if (state.mode === 'ai' && state.current === AI) scheduleAI();
 }
 
 function endGame(st) {
@@ -944,7 +959,9 @@ function endGame(st) {
   const sub  = document.getElementById('resultSub');
   if (st.draw) {
     line.textContent = '和　局';
-    sub.textContent = '連續 ' + PEACE_LIMIT + ' 步沒有吃子也沒有翻子';
+    sub.textContent = st.reason === 'wipeout'
+      ? '雙方最後的棋子同歸於盡'
+      : '連續 ' + PEACE_LIMIT + ' 步沒有吃子也沒有翻子';
   } else {
     const c = state.colorOf[st.winner];
     line.textContent = COLOR_NAME[c] + '　勝';
@@ -952,7 +969,8 @@ function endGame(st) {
     sub.textContent = st.reason === 'clear' ? '對方的棋子被吃光了' : '對方一步都走不了';
   }
   sfx('cap');
-  setTimeout(() => show(resultModal), 420);
+  const g = gen;
+  setTimeout(() => { if (g === gen && state.over) show(resultModal); }, 420);
 }
 
 /* ==================== 彈窗 ==================== */
