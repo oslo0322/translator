@@ -1,0 +1,17 @@
+{
+  "name": "暗棋",
+  "short_name": "暗棋",
+  "description": "傳統暗棋（翻棋），支援雙人同機與電腦對手",
+  "start_url": "./chess.html",
+  "display": "standalone",
+  "background_color": "#241708",
+  "theme_color": "#3d2a18",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🀄</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
