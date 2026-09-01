@@ -165,8 +165,6 @@ body{
   color:var(--black);
 }
 .piece[data-color="r"] .face.front{color:var(--red);border-color:#b3271e}
-.piece.dying{animation:die .26s ease-in forwards}
-@keyframes die{to{transform:scale(.3);opacity:0}}
 
 /* ---------- footer ---------- */
 .footer{
@@ -303,7 +301,7 @@ body{
     <ul>
       <li>可以吃「同級或比自己小」的敵子</li>
       <li><b>卒兵可以吃將帥；將帥不能吃卒兵</b></li>
-      <li>同級互吃 → 兩子同歸於盡</li>
+      <li>同級可以互吃，先動手的那方吃掉對方並佔位</li>
     </ul>
 
     <h3>炮（包）</h3>
@@ -428,13 +426,12 @@ function cloneForSearch(s) {
   };
 }
 
-/* 0 = 吃不了，1 = 吃掉，2 = 同歸於盡 */
+/* 0 = 吃不了，1 = 吃掉。同級可以互吃，先動手的那方存活 */
 function canCapture(a, b) {
   if (a.color === b.color) return 0;
   if (a.type === 'pawn' && b.type === 'king') return 1;   // 卒可吃將
   if (a.type === 'king' && b.type === 'pawn') return 0;   // 將不可吃卒
-  if (a.rank === b.rank) return 2;
-  return a.rank > b.rank ? 1 : 0;
+  return a.rank >= b.rank ? 1 : 0;
 }
 
 function movesFrom(s, from) {
@@ -497,21 +494,14 @@ function applyFlip(s, i) {
 
 function applyMove(s, from, to) {
   const p = s.board[from], t = s.board[to];
-  const ev = { type: 'move', from, to, taken: null, mutual: false };
+  const ev = { type: 'move', from, to, taken: null };
   if (!t) {
     s.board[to] = p; s.board[from] = null;
     s.peace++;
   } else {
-    const res = p.type === 'cannon' ? 1 : canCapture(p, t);
-    if (res === 2) {
-      s.board[from] = null; s.board[to] = null;
-      s.dead.push(p, t);
-      ev.taken = t; ev.mutual = true;
-    } else {
-      s.board[to] = p; s.board[from] = null;
-      s.dead.push(t);
-      ev.taken = t;
-    }
+    s.board[to] = p; s.board[from] = null;
+    s.dead.push(t);
+    ev.taken = t;
     s.peace = 0;
   }
   s.last = { from, to };
@@ -525,13 +515,8 @@ function statusOf(s) {
   if (s.peace >= PEACE_LIMIT) return { draw: true, reason: 'peace' };
   const c = s.colorOf[s.current];
   if (!c) return null;
-  let mine = 0, foes = 0;
-  for (let i = 0; i < N; i++) {
-    const p = s.board[i];
-    if (!p) continue;
-    if (p.color === c) mine++; else foes++;
-  }
-  if (mine === 0 && foes === 0) return { draw: true, reason: 'wipeout' };
+  let mine = 0;
+  for (let i = 0; i < N; i++) { const p = s.board[i]; if (p && p.color === c) mine++; }
   if (mine === 0) return { winner: 1 - s.current, reason: 'clear' };
   if (legalActions(s).length === 0) return { winner: 1 - s.current, reason: 'stuck' };
   return null;
@@ -582,9 +567,7 @@ function bestGain(s, color) {
     if (!p || !p.revealed || p.color !== color) continue;
     for (const m of movesFrom(s, i)) {
       if (m.kind !== 'cap') continue;
-      const t = s.board[m.to];
-      const res = p.type === 'cannon' ? 1 : canCapture(p, t);
-      const gain = val(t) - (res === 2 ? val(p) : 0);
+      const gain = val(s.board[m.to]);
       if (gain > best) best = gain;
     }
   }
@@ -875,7 +858,7 @@ function doMove(from, to) {
   sel = -1; targets.clear();
   render();
   const el = cells[to].querySelector('.piece');
-  if (el && !ev.mutual) {
+  if (el) {
     el.style.transition = 'none';
     el.style.transform = 'translate(' + (a.left - b.left) + 'px,' + (a.top - b.top) + 'px)';
     requestAnimationFrame(() => {
@@ -883,7 +866,6 @@ function doMove(from, to) {
       el.style.transform = '';
     });
   }
-  if (ev.mutual) toast('同歸於盡');
   sfx(ev.taken ? 'cap' : 'move');
   afterAction();
 }
@@ -959,9 +941,7 @@ function endGame(st) {
   const sub  = document.getElementById('resultSub');
   if (st.draw) {
     line.textContent = '和　局';
-    sub.textContent = st.reason === 'wipeout'
-      ? '雙方最後的棋子同歸於盡'
-      : '連續 ' + PEACE_LIMIT + ' 步沒有吃子也沒有翻子';
+    sub.textContent = '連續 ' + PEACE_LIMIT + ' 步沒有吃子也沒有翻子';
   } else {
     const c = state.colorOf[st.winner];
     line.textContent = COLOR_NAME[c] + '　勝';
