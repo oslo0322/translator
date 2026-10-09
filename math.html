@@ -97,7 +97,7 @@ body{
 
 .panel-h{font-size:22px;font-weight:900;margin-bottom:16px;}
 
-.mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;}
+.mode-switch{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:20px;}
 .mode-btn{
   border:3px solid var(--line);background:var(--surface-2);color:var(--ink-soft);
   border-radius:18px;padding:13px 10px;font-family:var(--font-ui);font-size:18px;
@@ -488,19 +488,30 @@ function genQuestions(count, mode = "subtraction") {
     }
     return table.slice(0, count);
   }
+  // 保留 subtraction 模式識別與既有紀錄，題目改為加減混合。
+  const firstIsAddition = randInt(0, 1) === 1;
+  function makeQuestion(index) {
+    const isAddition = (index % 2 === 0) === firstIsAddition;
+    const op = isAddition ? "+" : "−";
+    const a = randInt(11, isAddition ? 998 : 999);
+    const b = randInt(1, isAddition ? 999 - a : a);
+    return { a, b, op, answer: isAddition ? a + b : a - b, key: a + op + b };
+  }
   let guard = 0;
   while (qs.length < count && guard < count * 40) {
     guard++;
-    const a = randInt(11, 100);
-    const b = randInt(1, a);
-    const key = a + "-" + b;
-    if (qs.some((q) => q.key === key)) continue;
-    qs.push({ a, b, answer: a - b, key });
+    const q = makeQuestion(qs.length);
+    if (qs.some((existing) => existing.key === q.key)) continue;
+    qs.push(q);
   }
   while (qs.length < count) {
-    const a = randInt(11, 100);
-    const b = randInt(1, a);
-    qs.push({ a, b, answer: a - b, key: a + "-" + b + "-" + qs.length });
+    const q = makeQuestion(qs.length);
+    qs.push({ ...q, key: q.key + "-" + qs.length });
+  }
+  // 打散順序，確保每回合都有加法與減法，而非固定交替。
+  for (let i = qs.length - 1; i > 0; i--) {
+    const j = randInt(0, i);
+    [qs[i], qs[j]] = [qs[j], qs[i]];
   }
   return qs;
 }
@@ -864,7 +875,7 @@ function PokeCallout({ points, onRedeem }) {
 function StartScreen({ profile, setProfile, onStart, records, points, pokedex, onRedeem }) {
   const [editing, setEditing] = useState(false);
   const [count, setCount] = useState(10);
-  const [mode, setMode] = useState("subtraction");
+  const mode = "subtraction";
   const [sideTab, setSideTab] = useState("lb");  // "lb" | "dex"
   const counts = [3, 5, 8, 10];
   const [mascot, setMascot] = useState(null);
@@ -899,7 +910,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
         </div>
         <div>
           <h1 className="brand-title">數學闖關</h1>
-          <p className="brand-sub">{mode === "multiplication" ? "九九乘法 · 熟練每一組！" : "100 以內減法 · 算得快又準！"}</p>
+          <p className="brand-sub">三位數以內加減法 · 算得快又準！</p>
         </div>
         <div className="brand-right">
           <PointsBadge points={points} />
@@ -915,8 +926,8 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
         <section className="panel choose">
           <h2 className="panel-h">選擇測驗</h2>
           <div className="mode-switch">
-            <button className={"mode-btn " + (mode === "subtraction" ? "active" : "")} onClick={() => setMode("subtraction")}>➖ 減法</button>
-            <button className={"mode-btn " + (mode === "multiplication" ? "active" : "")} onClick={() => setMode("multiplication")}>✖️ 九九乘法</button>
+            <button className="mode-btn active" aria-pressed="true">➕➖ 加減法</button>
+            {/* 暫時隱藏九九乘法入口，保留出題功能與既有紀錄。 */}
           </div>
           <h2 className="panel-h">這次要挑戰幾題？</h2>
           <div className="chips">
@@ -1110,7 +1121,7 @@ function QuizScreen({ questions, mode, profile, points, onFinish }) {
           <div className="q-counter">第 {idx + 1} 題 / 共 {questions.length} 題</div>
           <div className="q-equation" key={idx}>
             <span className="num">{q.a}</span>
-            <span className="op">{mode === "multiplication" ? "×" : "−"}</span>
+            <span className="op">{q.op || (mode === "multiplication" ? "×" : "−")}</span>
             <span className="num">{q.b}</span>
             <span className="op">=</span>
             <span className={"answer-box " + (cur ? "filled" : "")} key={bump}>
@@ -1201,7 +1212,7 @@ function ResultScreen({ questions, mode, answers, timeMs, profile, records, poin
             <ul className="wrong-list">
               {wrong.map((g, i) => (
                 <li key={i} className="wrong-item">
-                  <span className="wq">{g.a} {mode === "multiplication" ? "×" : "−"} {g.b} =</span>
+                  <span className="wq">{g.a} {g.op || (mode === "multiplication" ? "×" : "−")} {g.b} =</span>
                   <span className="wgiven">你寫 {g.given}</span>
                   <span className="wright">正解 {g.answer}</span>
                 </li>
