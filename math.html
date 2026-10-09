@@ -493,8 +493,8 @@ function genQuestions(count, mode = "subtraction") {
   function makeQuestion(index) {
     const isAddition = (index % 2 === 0) === firstIsAddition;
     const op = isAddition ? "+" : "−";
-    const a = randInt(11, isAddition ? 998 : 999);
-    const b = randInt(1, isAddition ? 999 - a : a);
+    const a = randInt(11, isAddition ? 298 : 200);
+    const b = randInt(1, isAddition ? 299 - a : a);
     return { a, b, op, answer: isAddition ? a + b : a - b, key: a + op + b };
   }
   let guard = 0;
