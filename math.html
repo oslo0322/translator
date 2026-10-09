@@ -132,6 +132,7 @@ body{
 .brand-title{font-size:40px;font-weight:900;line-height:1;}
 .brand-sub{font-size:17px;color:var(--ink-soft);font-weight:700;margin-top:6px;}
 .brand-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.refresh-btn{min-height:44px;padding:8px 12px;font-size:14px;}
 
 .start-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;flex:1;min-height:0;}
 .panel{background:var(--surface);border-radius:28px;padding:26px;box-shadow:0 10px 30px oklch(0.5 0.05 285 / .12);display:flex;flex-direction:column;border:1px solid oklch(0.94 0.01 285);}
@@ -474,6 +475,14 @@ body{
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
+function forceRefresh() {
+  const url = new URL(window.location.href);
+  // 每次使用新的網址抓取頁面，避開 iPad 捷徑與瀏覽器的舊版快取。
+  url.searchParams.set("_refresh", Date.now().toString());
+  window.location.replace(url.href);
+}
+window.forceRefresh = forceRefresh;
 
 function genQuestions(count, mode = "subtraction") {
   const qs = [];
@@ -913,6 +922,7 @@ function StartScreen({ profile, setProfile, onStart, records, points, pokedex, o
           <p className="brand-sub">三位數以內加減法 · 算得快又準！</p>
         </div>
         <div className="brand-right">
+          <button className="ghost-btn refresh-btn" onClick={window.forceRefresh}>↻ 強制重新整理</button>
           <PointsBadge points={points} />
           {points >= 5 && (
             <div className="redeem-hint" style={{ fontSize: "12px", fontWeight: 700, color: "var(--gold-d)", textAlign: "right" }}>
