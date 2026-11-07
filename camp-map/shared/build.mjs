@@ -1,0 +1,12 @@
+import {fileURLToPath} from 'node:url';
+process.chdir(fileURLToPath(new URL('.', import.meta.url)));
+import {mkdir, copyFile, rm} from 'node:fs/promises';
+await rm('dist', {recursive: true, force: true});
+await mkdir('dist/server', {recursive: true});
+await mkdir('dist/.openai', {recursive: true});
+await mkdir('dist/drizzle/meta', {recursive: true});
+await copyFile('worker/index.js', 'dist/server/index.js');
+await copyFile('.openai/hosting.json', 'dist/.openai/hosting.json');
+await copyFile('drizzle/0000_entries.sql', 'dist/drizzle/0000_entries.sql');
+await copyFile('drizzle/meta/_journal.json', 'dist/drizzle/meta/_journal.json');
+console.log('Built shared roster Worker and migration');
